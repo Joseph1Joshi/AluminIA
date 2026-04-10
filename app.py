@@ -5,7 +5,7 @@ import base64
 import time
 
 # --- 1. CONFIGURACIÓN ---
-st.set_page_config(page_title="Aluminia AI | Dev Console", page_icon="☣️", layout="wide")
+st.set_page_config(page_title="Aluminia", page_icon="☣️", layout="wide")
 
 # --- 2. CONEXIÓN SUPABASE ---
 @st.cache_resource
