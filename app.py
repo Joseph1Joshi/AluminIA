@@ -10,30 +10,33 @@ st.set_page_config(
     layout="centered"
 )
 
-# --- 2. DECORACIÓN Y ESTILO ESTÁNDAR (CSS) ---
+# --- 2. DECORACIÓN Y ESTILO (CSS) ---
 st.markdown("""
     <style>
-    /* Fondo con degradado sutil */
     .stApp {
         background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
     }
     
-    /* Contenedor de mensajes con fuentes estándar y más espacio interno */
     .stChatMessage {
         background-color: rgba(255, 255, 255, 0.95) !important;
         border-radius: 15px !important;
-        padding: 20px !important; /* Más espacio para evitar desbordamiento */
+        padding: 20px !important;
         margin-bottom: 15px !important;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         border: 1px solid #e0e0e0 !important;
     }
 
-    /* Forzar fuentes normales del sistema para máxima compatibilidad */
-    html, body, [class*="st-"] {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+    /* Mejora la legibilidad de LaTeX */
+    .katex-display {
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 10px 0;
     }
 
-    /* Título principal sin fuentes externas */
+    html, body, [class*="st-"] {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    }
+
     .main-title {
         color: #1e3a8a;
         text-align: center;
@@ -49,27 +52,20 @@ st.markdown("""
         margin-bottom: 2rem;
     }
 
-    /* Ajuste del input de chat */
-    .stChatInputContainer {
-        border-radius: 10px !important;
-    }
-
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
+    #MainMenu, footer, header {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. DICCIONARIO DE PERSONALIDADES ---
+# --- 3. PERSONALIDADES ---
 PERSONALIDADES = {
-    "Aluminia Original 💡": "Eres neutra, profesional y clara. Tu lenguaje es impecable.",
-    "Cercana y Casual 👋": "Eres como una hermana mayor. Usas un lenguaje relajado y cercano.",
-    "Enfoque Práctico 🛠️": "Eres directa y pragmática. Te enfocas en la utilidad de los conceptos.",
-    "Mente Analítica 🔍": "Te enfocas en patrones y lógica pura. Eres precisa y detectivesca.",
-    "Entrenadora (Coach) ⚡": "Tu tono es motivador y dinámico. Ves el estudio como un entrenamiento."
+    "Aluminia Original 💡": "Eres neutra y profesional. Tu lenguaje es impecable.",
+    "Cercana y Casual 👋": "Eres como una hermana mayor. Usas un lenguaje relajado.",
+    "Enfoque Práctico 🛠️": "Eres directa y pragmática. Te enfocas en la utilidad.",
+    "Mente Analítica 🔍": "Te enfocas en patrones y lógica pura.",
+    "Entrenadora (Coach) ⚡": "Tu tono es motivador. Ves el estudio como un reto."
 }
 
-# --- 4. FUNCIONES INTERNAS ---
+# --- 4. FUNCIONES ---
 def investigar_silenciosamente(query):
     try:
         search_results = wikipedia.search(query)
@@ -79,47 +75,40 @@ def investigar_silenciosamente(query):
         return None
     return None
 
-# --- 5. GESTIÓN DE SESIÓN ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "personalidad_key" not in st.session_state:
     st.session_state.personalidad_key = "Aluminia Original 💡"
 
-# --- 6. BARRA LATERAL ---
+# --- 5. SIDEBAR ---
 with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/3413/3413535.png", width=100)
     st.title("Configuración")
-    
     st.session_state.personalidad_key = st.selectbox(
         "Estilo del mentor:", 
         options=list(PERSONALIDADES.keys()),
         index=list(PERSONALIDADES.keys()).index(st.session_state.personalidad_key)
     )
-    
-    st.divider()
-    st.success("Cerebro: Llama-3.3-70B")
-    
-    if st.button("🗑️ Reiniciar Tutoría"):
+    if st.button("🗑️ Reiniciar Sesión"):
         st.session_state.messages = []
         st.rerun()
 
-# --- 7. INTERFAZ PRINCIPAL ---
+# --- 6. INTERFAZ ---
 st.markdown('<div class="main-title">Aluminia</div>', unsafe_allow_html=True)
-st.markdown(f'<div class="sub-title">Conversando en modo: <b>{st.session_state.personalidad_key}</b></div>', unsafe_allow_html=True)
+st.markdown(f'<div class="sub-title">Modo: <b>{st.session_state.personalidad_key}</b></div>', unsafe_allow_html=True)
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# --- 8. LÓGICA DE PROCESAMIENTO ---
+# --- 7. LÓGICA ---
 api_key = st.secrets.get("GROQ_API_KEY")
 if not api_key:
-    st.error("Falta la API KEY en los Secrets.")
+    st.error("Falta la API KEY.")
     st.stop()
 
 client = Groq(api_key=api_key)
 
-if prompt := st.chat_input("¿Qué duda quieres explorar?"):
+if prompt := st.chat_input("¿Qué exploramos hoy?"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
@@ -130,12 +119,18 @@ if prompt := st.chat_input("¿Qué duda quieres explorar?"):
         response_placeholder = st.empty()
         full_response = ""
         
+        # INSTRUCCIÓN CRÍTICA DE FORMATO
         prompt_sistema = f"""
-        Eres Aluminia, mentora socrática de secundaria alta.
+        Eres Aluminia, mentora socrática.
         IDENTIDAD: {PERSONALIDADES[st.session_state.personalidad_key]}
-        MÉTODO: NUNCA des respuestas. Guía con preguntas inteligentes.
-        WIKI-CONTEXT: {datos_wiki if datos_wiki else 'Sin datos adicionales.'}
-        REGLAS: Usa LaTeX. Sé breve y fomenta la reflexión.
+        
+        REGLAS DE FORMATO MATEMÁTICO:
+        - Para fórmulas importantes o largas, USA BLOQUES CENTRADOS con doble signo de dólar, por ejemplo:
+          $$f(x) = \\int_{{a}}^{{b}} g(x) dx$$
+        - Para variables simples dentro de una oración, usa un solo signo: $x = 5$.
+        - NUNCA des la respuesta, solo guía con preguntas.
+        
+        CONTEXTO: {datos_wiki if datos_wiki else 'Sin datos extra.'}
         """
 
         mensajes_api = [{"role": "system", "content": prompt_sistema}] + [
@@ -145,7 +140,7 @@ if prompt := st.chat_input("¿Qué duda quieres explorar?"):
         completion = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=mensajes_api,
-            temperature=0.6, 
+            temperature=0.5, 
             stream=True
         )
         
