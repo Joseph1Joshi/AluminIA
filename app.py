@@ -2,12 +2,30 @@ import streamlit as st
 from groq import Groq
 import wikipedia
 
-# 1. Configuración de Wikipedia y Estética
+# --- 1. CONFIGURACIÓN Y ESTÉTICA ---
 wikipedia.set_lang("es")
 st.set_page_config(page_title="Aluminia", page_icon="🎓", layout="centered")
 
-# Función silenciosa de investigación
+# Estilo para burbujas de chat más limpias
+st.markdown("""
+    <style>
+    .stChatMessage { border-radius: 15px; margin-bottom: 10px; }
+    .main { background-color: #f9f9f9; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- 2. PERSONALIDADES SUTILES ---
+PERSONALIDADES = {
+    "Aluminia Original 💡": "Eres neutra, profesional y clara. Tu lenguaje es impecable y equilibrado. Te enfocas en la claridad absoluta.",
+    "Cercana y Casual 👋": "Eres como una hermana mayor. Usas un lenguaje relajado (ej: 'mira', 'fíjate', 'tranqui'). Haces que el estudio se sienta ligero.",
+    "Enfoque Práctico 🛠️": "Eres directa y pragmática. Hablas de 'herramientas' y 'utilidad'. Buscas que el alumno vea cómo aplicar lo que aprende.",
+    "Mente Analítica 🔍": "Te enfocas en patrones y lógica pura. Hablas de 'evidencias' e 'hipótesis'. Eres precisa y detectivesca.",
+    "Entrenadora (Coach) ⚡": "Tu tono es motivador. Hablas del aprendizaje como un entrenamiento mental. Usas frases como 'buen intento' o 'vamos a reforzar esto'."
+}
+
+# --- 3. FUNCIONES DE APOYO ---
 def investigar_silenciosamente(query):
+    """Busca en Wikipedia sin interrumpir el flujo visual."""
     try:
         search_results = wikipedia.search(query)
         if search_results:
@@ -16,71 +34,96 @@ def investigar_silenciosamente(query):
         return None
     return None
 
-# 2. Barra Lateral de Control
+# --- 4. PERSISTENCIA Y BARRA LATERAL ---
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# Inicializar o mantener la personalidad elegida
+if "personalidad_key" not in st.session_state:
+    st.session_state.personalidad_key = "Aluminia Original 💡"
+
 with st.sidebar:
-    st.title("⚙️ Ajustes de Aluminia")
-    model_option = st.selectbox("Modelo:", ("llama-3.3-70b-versatile", "llama-3.1-8b-instant"))
-    temp = st.slider("Creatividad:", 0.0, 1.0, 0.5)
-    if st.button("Reiniciar Tutoría"):
+    st.title("🛡️ Panel de Aluminia")
+    
+    # Selector de personalidad con persistencia en la sesión
+    st.session_state.personalidad_key = st.selectbox(
+        "Personalidad de Aluminia:", 
+        options=list(PERSONALIDADES.keys()),
+        index=list(PERSONALIDADES.keys()).index(st.session_state.personalidad_key)
+    )
+    
+    st.divider()
+    
+    # Parámetros técnicos manuales
+    st.subheader("Configuración Técnica")
+    model_choice = st.selectbox("Modelo (Cerebro):", ("llama-3.3-70b-versatile", "llama-3.1-8b-instant"))
+    temp_val = st.slider("Creatividad (Temperatura):", 0.0, 1.0, 0.5)
+    
+    if st.button("Limpiar conversación"):
         st.session_state.messages = []
         st.rerun()
 
-# 3. Gestión de API Key
+# --- 5. LÓGICA DE CONEXIÓN (GROQ) ---
 api_key = st.secrets.get("GROQ_API_KEY")
 if not api_key:
-    st.error("Falta la API KEY en los Secrets.")
+    st.error("Error: Configura la API KEY en los Secrets de Streamlit.")
     st.stop()
 
 client = Groq(api_key=api_key)
 
-# 4. Inicializar historial
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+# --- 6. INTERFAZ DE USUARIO ---
+st.title(f"🎓 {st.session_state.personalidad_key}")
+st.caption("Mentora socrática de secundaria alta apoyada por Wikipedia.")
 
-st.title("🎓 Aluminia")
-st.markdown("---")
+# Mostrar historial de chat
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
-# Mostrar chat
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
-# 5. Lógica de Interacción
-if prompt := st.chat_input("¿Qué tienes en mente?"):
-    # Guardamos mensaje del usuario
+# --- 7. PROCESAMIENTO DE MENSAJES ---
+if prompt := st.chat_input("¿Qué concepto quieres explorar hoy?"):
+    # 1. Mostrar mensaje del usuario
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Búsqueda invisible en Wikipedia
-    contexto_wiki = investigar_silenciosamente(prompt)
+    # 2. Investigación invisible
+    datos_wiki = investigar_silenciosamente(prompt)
 
-    # Respuesta de Aluminia
+    # 3. Generación de respuesta socrática
     with st.chat_message("assistant"):
         response_placeholder = st.empty()
         full_response = ""
         
-        # System Prompt Refinado
-        system_prompt = f"""
-        Eres Aluminia, una mentora socrática experta para adolescentes de secundaria alta.
-        Tu misión: Guiar al alumno para que llegue a la solución por sí mismo. NUNCA des la respuesta.
+        # El System Prompt que une todo
+        prompt_sistema = f"""
+        Tu nombre es Aluminia. Eres una mentora socrática para estudiantes de 16-18 años.
         
-        DATOS DE RESPALDO (Usa esto para guiar, no para copiar): 
-        {contexto_wiki if contexto_wiki else 'No se encontró información externa adicional.'}
+        IDENTIDAD ACTUAL: {PERSONALIDADES[st.session_state.personalidad_key]}
         
-        REGLAS DE ORO:
-        - No menciones Wikipedia a menos que sea estrictamente necesario para validar un hecho o corregir un error grave del alumno.
-        - Si el alumno falla en un concepto técnico, usa el dato de respaldo para plantear una pregunta que lo corrija.
-        - Usa LaTeX para cualquier fórmula o término científico: $E = mc^2$.
-        - Mantén el tono de 'ayudante inteligente', no de 'bot servicial'.
+        MÉTODO SOCRÁTICO:
+        - NUNCA des la respuesta. Si el alumno te presiona, mantente firme con ingenio.
+        - Tu objetivo es que el alumno descubra la lógica por sí mismo.
+        - Usa el contexto de Wikipedia de forma discreta para guiar, no para dictar.
+        
+        CONTEXTO DE INVESTIGACIÓN:
+        {datos_wiki if datos_wiki else 'No hay datos externos adicionales.'}
+        
+        REGLAS:
+        - Usa LaTeX para matemáticas: $x = \\frac{{-b \\pm \\sqrt{{b^2 - 4ac}}}}{{2a}}$.
+        - Si el alumno dice algo falso, usa una pregunta para que él mismo note la contradicción.
         """
 
-        messages_to_send = [{"role": "system", "content": system_prompt}] + st.session_state.messages
+        # Construcción de la conversación para la API
+        mensajes_api = [{"role": "system", "content": prompt_sistema}] + [
+            {"role": m["role"], "content": m["content"]} for m in st.session_state.messages
+        ]
         
+        # Llamada a Groq con streaming
         completion = client.chat.completions.create(
-            model=model_option,
-            messages=messages_to_send,
-            temperature=temp,
+            model=model_choice,
+            messages=mensajes_api,
+            temperature=temp_val,
             stream=True
         )
         
@@ -91,4 +134,5 @@ if prompt := st.chat_input("¿Qué tienes en mente?"):
         
         response_placeholder.markdown(full_response)
     
+    # Guardar respuesta en el historial
     st.session_state.messages.append({"role": "assistant", "content": full_response})
