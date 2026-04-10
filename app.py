@@ -5,7 +5,7 @@ import base64
 
 # --- 1. CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Aluminia | Acceso Seguro", page_icon="🔐", layout="wide")
-
+st.markdown('<meta name="theme-color" content="#020f0a">', unsafe_allow_html=True)
 # --- 2. CONEXIÓN A SUPABASE ---
 @st.cache_resource
 def conectar_supabase():
