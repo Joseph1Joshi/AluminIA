@@ -10,39 +10,44 @@ st.set_page_config(
     layout="centered"
 )
 
-# --- 2. DECORACIÓN Y ESTILO (CSS) ---
+# --- 2. DECORACIÓN Y ESTILO CORREGIDO (CSS) ---
 st.markdown("""
     <style>
+    /* Fondo general */
     .stApp {
         background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
     }
     
+    /* Burbujas de chat: permitimos que el contenido (imágenes) fluya */
     .stChatMessage {
         background-color: rgba(255, 255, 255, 0.95) !important;
         border-radius: 15px !important;
-        padding: 20px !important;
-        margin-bottom: 15px !important;
+        padding: 1.5rem !important;
+        margin-bottom: 1rem !important;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         border: 1px solid #e0e0e0 !important;
+        max-width: 100%;
     }
 
-    /* Mejora la legibilidad de LaTeX */
-    .katex-display {
-        overflow-x: auto;
-        overflow-y: hidden;
-        padding: 10px 0;
+    /* Asegurar que las imágenes en el chat se vean bien */
+    .stChatMessage img {
+        max-width: 100%;
+        border-radius: 10px;
+        margin: 10px 0;
     }
 
+    /* Fuentes del sistema */
     html, body, [class*="st-"] {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
     }
 
+    /* Títulos */
     .main-title {
         color: #1e3a8a;
         text-align: center;
         font-size: 2.5rem;
         font-weight: bold;
-        margin-bottom: 0.5rem;
+        margin-top: -2rem;
     }
 
     .sub-title {
@@ -52,7 +57,13 @@ st.markdown("""
         margin-bottom: 2rem;
     }
 
-    #MainMenu, footer, header {visibility: hidden;}
+    /* CORRECCIÓN: Ocultar solo elementos estéticos, NO funcionales */
+    footer {visibility: hidden;}
+    header {background-color: transparent !important;}
+    [data-testid="stHeader"] {background: none !important;}
+
+    /* Mejorar bloques de código y fórmulas */
+    code { color: #d63384; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -80,14 +91,15 @@ if "messages" not in st.session_state:
 if "personalidad_key" not in st.session_state:
     st.session_state.personalidad_key = "Aluminia Original 💡"
 
-# --- 5. SIDEBAR ---
+# --- 5. SIDEBAR (CORREGIDA) ---
 with st.sidebar:
-    st.title("Configuración")
+    st.markdown("### ⚙️ Configuración")
     st.session_state.personalidad_key = st.selectbox(
         "Estilo del mentor:", 
         options=list(PERSONALIDADES.keys()),
         index=list(PERSONALIDADES.keys()).index(st.session_state.personalidad_key)
     )
+    st.divider()
     if st.button("🗑️ Reiniciar Sesión"):
         st.session_state.messages = []
         st.rerun()
@@ -119,17 +131,14 @@ if prompt := st.chat_input("¿Qué exploramos hoy?"):
         response_placeholder = st.empty()
         full_response = ""
         
-        # INSTRUCCIÓN CRÍTICA DE FORMATO
         prompt_sistema = f"""
         Eres Aluminia, mentora socrática.
         IDENTIDAD: {PERSONALIDADES[st.session_state.personalidad_key]}
-        
-        REGLAS DE FORMATO MATEMÁTICO:
-        - Para fórmulas importantes o largas, USA BLOQUES CENTRADOS con doble signo de dólar, por ejemplo:
-          $$f(x) = \\int_{{a}}^{{b}} g(x) dx$$
-        - Para variables simples dentro de una oración, usa un solo signo: $x = 5$.
-        - NUNCA des la respuesta, solo guía con preguntas.
-        
+        REGLAS DE FORMATO:
+        - USA BLOQUES $$ para fórmulas largas.
+        - USA $ para variables en línea.
+        - Si necesitas explicar algo visual, describe la imagen o usa diagramas sencillos.
+        - NUNCA des la respuesta directa.
         CONTEXTO: {datos_wiki if datos_wiki else 'Sin datos extra.'}
         """
 
