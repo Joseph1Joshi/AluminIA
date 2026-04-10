@@ -7,159 +7,137 @@ import base64
 st.set_page_config(
     page_title="Aluminia Tutor", 
     page_icon="🎓", 
-    layout="wide" # Cambiamos a wide para controlar los márgenes nosotros
+    layout="wide"
 )
 
 # --- 2. CARGA DE LOGO PERSONALIZADO ---
 def get_base64(bin_file):
-    with open(bin_file, 'rb') as f:
-        data = f.read()
-    return base64.b64encode(data).decode()
+    try:
+        with open(bin_file, 'rb') as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    except:
+        return None
 
-try:
-    # Intenta cargar tu diseño guardado como 'logo.png'
-    logo_base64 = get_base64("logo.png")
-    LOGO_IMG = f"data:image/png;base64,{logo_base64}"
-except:
-    # Logo de respaldo si el archivo no existe
-    LOGO_IMG = "https://cdn-icons-png.flaticon.com/512/3413/3413535.png"
+# Intentamos cargar tu logo
+logo_data = get_base64("logo.png")
+LOGO_IMG = f"data:image/png;base64,{logo_data}" if logo_data else "https://cdn-icons-png.flaticon.com/512/3413/3413535.png"
 
-# --- 3. CSS MAESTRO (PROPORCIONES Y ESTÉTICA) ---
+# --- 3. CSS MAESTRO (CON FONDO ANIMADO Y RESPONSIVE) ---
 st.markdown(f"""
     <style>
-    /* Importar fuente moderna */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
 
-    /* Fondo animado sutil */
+    /* Animación del fondo degradado */
+    @keyframes gradientBG {{
+        0% {{ background-position: 0% 50%; }}
+        50% {{ background-position: 100% 50%; }}
+        100% {{ background-position: 0% 50%; }}
+    }}
+
     .stApp {{
-        background: linear-gradient(135deg, #f8f9fc 0%, #e2e8f0 100%);
+        background: linear-gradient(-45deg, #f8fafc, #e2e8f0, #f1f5f9, #cbd5e1);
+        background-size: 400% 400%;
+        animation: gradientBG 15s ease infinite;
         font-family: 'Inter', sans-serif !important;
     }}
 
-    /* Limitar el ancho en PC para que no se vea "estirado" */
+    /* Contenedor principal optimizado para PC y Móvil */
     .block-container {{
-        max-width: 800px;
+        max-width: 850px;
         padding-top: 2rem;
-        padding-bottom: 10rem;
+        padding-bottom: 6rem;
     }}
 
-    /* Optimización para MÓVILES */
     @media (max-width: 640px) {{
         .block-container {{
-            padding-left: 1rem;
-            padding-right: 1rem;
-            padding-top: 1rem;
+            padding-left: 0.8rem;
+            padding-right: 0.8rem;
         }}
-        .aluminia-title {{ font-size: 2.2rem !important; }}
+        .aluminia-title {{ font-size: 2.5rem !important; }}
     }}
 
-    /* Título de alta gama */
+    /* Estética de Títulos */
     .aluminia-title {{
         font-weight: 800;
         color: #1e3a8a;
         text-align: center;
         font-size: 3.5rem;
         letter-spacing: -2px;
-        margin-bottom: 0px;
+        margin-bottom: 5px;
     }}
 
     .aluminia-sub {{
         text-align: center;
-        color: #64748b;
-        font-size: 1rem;
+        color: #475569;
+        font-size: 1.1rem;
         margin-bottom: 2rem;
-        font-weight: 400;
     }}
 
-    /* Burbujas de Chat estilo Glassmorphism */
+    /* Burbujas Glassmorphism */
     [data-testid="stChatMessage"] {{
-        background: rgba(255, 255, 255, 0.7) !important;
-        backdrop-filter: blur(12px) !important;
-        -webkit-backdrop-filter: blur(12px) !important;
-        border: 1px solid rgba(255, 255, 255, 0.3) !important;
-        border-radius: 24px !important;
-        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05) !important;
-        margin-bottom: 1.2rem !important;
-        transition: transform 0.2s ease;
-    }}
-
-    /* Avatar circular y estilizado */
-    [data-testid="stChatMessage"] img {{
-        border-radius: 12px !important;
-        border: 2px solid white;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }}
-
-    /* Personalización del Input (Barra de escritura) */
-    .stChatInputContainer {{
+        background: rgba(255, 255, 255, 0.65) !important;
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.4) !important;
         border-radius: 20px !important;
-        border: 1px solid rgba(0,0,0,0.1) !important;
-        background: white !important;
-        box-shadow: 0 -10px 25px rgba(0,0,0,0.03) !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03) !important;
+        margin-bottom: 1rem !important;
     }}
 
-    /* Ocultar elementos de Streamlit para una experiencia limpia */
+    /* Estilo del Input de Chat */
+    .stChatInputContainer {{
+        border-radius: 15px !important;
+        background: white !important;
+        border: 1px solid rgba(0,0,0,0.05) !important;
+    }}
+
+    /* Ocultar elementos innecesarios */
     footer {{visibility: hidden;}}
-    header {{background: rgba(0,0,0,0) !important;}}
+    header {{background: transparent !important;}}
     [data-testid="stHeader"] {{background: none !important;}}
-    
-    /* Mejorar el renderizado de LaTeX */
-    .katex {{ font-size: 1.1em !important; color: #1e293b; }}
     </style>
     """, unsafe_allow_html=True)
 
-# --- 4. SIDEBAR REFINADA ---
+# --- 4. SIDEBAR ---
 with st.sidebar:
-    st.markdown(f"""
-        <div style="text-align: center; padding: 1rem;">
-            <img src="{LOGO_IMG}" width="120" style="border-radius: 20%;">
-            <h2 style="color: #1e3a8a; margin-top: 10px;">Aluminia Tutor</h2>
-            <p style="font-size: 0.8rem; color: #64748b;">v2.0 Beta • Llama 3.3</p>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    st.divider()
-    personalidad = st.selectbox(
-        "Estilo de Aprendizaje",
-        ["Aluminia Original 💡", "Cercana y Casual 👋", "Enfoque Práctico 🛠️", "Mente Analítica 🔍", "Entrenadora ⚡"]
-    )
-    
-    if st.button("🗑️ Nueva Sesión", use_container_width=True):
+    st.markdown(f'<div style="text-align:center"><img src="{LOGO_IMG}" width="100" style="border-radius:15px"></div>', unsafe_allow_html=True)
+    st.title("Configuración")
+    estilo = st.selectbox("Personalidad:", ["Aluminia Original 💡", "Cercana 👋", "Práctica 🛠️", "Analítica 🔍", "Coach ⚡"])
+    if st.button("🗑️ Reiniciar Chat", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
 
-# --- 5. CUERPO DE LA APP ---
+# --- 5. INTERFAZ ---
 st.markdown('<div class="aluminia-title">Aluminia</div>', unsafe_allow_html=True)
-st.markdown('<div class="aluminia-sub">Tu mentora socrática impulsada por IA</div>', unsafe_allow_html=True)
+st.markdown('<div class="aluminia-sub">Tu guía hacia el conocimiento propio.</div>', unsafe_allow_html=True)
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Mostrar mensajes con el avatar personalizado
 for msg in st.session_state.messages:
     avatar = LOGO_IMG if msg["role"] == "assistant" else "👤"
     with st.chat_message(msg["role"], avatar=avatar):
         st.markdown(msg["content"])
 
-# --- 6. LÓGICA DE INTELIGENCIA ---
+# --- 6. LÓGICA ---
 api_key = st.secrets.get("GROQ_API_KEY")
 if not api_key:
-    st.error("Error: API Key no encontrada.")
+    st.error("Por favor, añade tu GROQ_API_KEY en los Secrets.")
     st.stop()
 
 client = Groq(api_key=api_key)
 
-if prompt := st.chat_input("¿Qué vamos a descubrir hoy?"):
+if prompt := st.chat_input("¿Qué duda exploramos hoy?"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user", avatar="👤"):
         st.markdown(prompt)
 
     with st.chat_message("assistant", avatar=LOGO_IMG):
-        placeholder = st.empty()
-        full_response = ""
+        full_res = ""
+        holder = st.empty()
         
-        # El System Prompt ahora incluye instrucciones de formato premium
-        sys_prompt = f"Eres Aluminia. Personalidad: {personalidad}. NUNCA des respuestas, usa el método socrático. Usa LaTeX $$ para fórmulas matemáticas centradas. Mantén párrafos cortos y usa negritas para enfatizar conceptos clave."
+        sys_prompt = f"Eres Aluminia. Estilo: {estilo}. Usa el método socrático (no des respuestas). Usa LaTeX ($$) para fórmulas matemáticas. Párrafos breves y claros."
 
         stream = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
@@ -169,8 +147,8 @@ if prompt := st.chat_input("¿Qué vamos a descubrir hoy?"):
 
         for chunk in stream:
             content = chunk.choices[0].delta.content or ""
-            full_response += content
-            placeholder.markdown(full_response + "▌")
+            full_res += content
+            holder.markdown(full_res + "▌")
         
-        placeholder.markdown(full_response)
-        st.session_state.messages.append({"role": "assistant", "content": full_response})
+        holder.markdown(full_res)
+        st.session_state.messages.append({"role": "assistant", "content": full_res})
