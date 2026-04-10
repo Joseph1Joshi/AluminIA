@@ -140,7 +140,7 @@ if "user" not in st.session_state: st.session_state.user = None
 if st.session_state.user is None:
     st.markdown('<div style="margin-top:12vh;"></div>', unsafe_allow_html=True)
     st.markdown('<div class="aluminia-metal">ALUMINIA</div>', unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #10b981; margin-top: -15px; opacity: 0.8; font-weight: 600;'>PROYECTO POR TU NOMBRE</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #10b981; margin-top: -15px; opacity: 0.8; font-weight: 600;'>Diseñado por Joseph Torifio</p>", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([0.1, 0.8, 0.1])
     with col2:
