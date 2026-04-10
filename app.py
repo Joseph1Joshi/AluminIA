@@ -5,79 +5,68 @@ import wikipedia
 # --- 1. CONFIGURACIÓN DE ENTORNO ---
 wikipedia.set_lang("es")
 st.set_page_config(
-    page_title="Aluminia Dark", 
+    page_title="Aluminia | Tu Mentora Socrática", 
     page_icon="🎓", 
     layout="centered"
 )
 
-# --- 2. DECORACIÓN MODO OSCURO (CSS) ---
+# --- 2. DECORACIÓN Y ESTILO CLARO (CSS) ---
 st.markdown("""
     <style>
-    /* Fondo oscuro profundo */
+    /* Fondo con degradado sutil y claro */
     .stApp {
-        background-color: #0e1117;
-        color: #e0e0e0;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
     }
     
-    /* Contenedor de mensajes estilo Dark */
+    /* Contenedor de mensajes con efecto cristal (Glassmorphism) */
     .stChatMessage {
-        background-color: #1a1c24 !important;
-        border-radius: 15px !important;
+        background-color: rgba(255, 255, 255, 0.9) !important;
+        border-radius: 20px !important;
         padding: 15px !important;
         margin-bottom: 15px !important;
-        border: 1px solid #30363d !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        backdrop-filter: blur(4px);
+        border: 1px solid rgba(255, 255, 255, 0.18) !important;
     }
 
-    /* Títulos en Neón Azul sutil */
+    /* Título principal elegante */
     .main-title {
-        color: #58a6ff;
+        font-family: 'Inter', sans-serif;
+        color: #1e3a8a;
         text-align: center;
         font-size: 3rem;
         font-weight: 800;
         margin-bottom: 0.5rem;
     }
 
+    /* Subtítulos */
     .sub-title {
         text-align: center;
-        color: #8b949e;
+        color: #4b5563;
         font-size: 1.1rem;
         margin-bottom: 2rem;
     }
 
-    /* Input del chat adaptado */
+    /* Input del chat */
     .stChatInputContainer {
-        background-color: #161b22 !important;
-        border: 1px solid #30363d !important;
-        border-radius: 15px !important;
+        border-radius: 25px !important;
+        background-color: white !important;
     }
 
-    /* Estilo de la barra lateral */
-    [data-testid="stSidebar"] {
-        background-color: #161b22 !important;
-        border-right: 1px solid #30363d;
-    }
-
-    /* Botones y otros elementos */
-    .stButton>button {
-        background-color: #21262d !important;
-        color: #c9d1d9 !important;
-        border: 1px solid #30363d !important;
-    }
-
+    /* Limpieza de la interfaz de Streamlit */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. PERSONALIDADES ---
+# --- 3. DICCIONARIO DE PERSONALIDADES ---
 PERSONALIDADES = {
-    "Aluminia Original 💡": "Eres neutra, profesional y clara.",
-    "Cercana y Casual 👋": "Eres como una hermana mayor, hablas relajado.",
-    "Enfoque Práctico 🛠️": "Eres directa, hablas de herramientas y utilidad.",
-    "Mente Analítica 🔍": "Te enfocas en patrones, lógica y evidencias.",
-    "Entrenadora (Coach) ⚡": "Eres motivadora y ves el estudio como un reto físico."
+    "Aluminia Original 💡": "Eres neutra, profesional y clara. Tu lenguaje es impecable.",
+    "Cercana y Casual 👋": "Eres como una hermana mayor. Usas un lenguaje relajado y cercano.",
+    "Enfoque Práctico 🛠️": "Eres directa y pragmática. Te enfocas en la utilidad de los conceptos.",
+    "Mente Analítica 🔍": "Te enfocas en patrones y lógica pura. Eres precisa y detectivesca.",
+    "Entrenadora (Coach) ⚡": "Tu tono es motivador y dinámico. Ves el estudio como un entrenamiento."
 }
 
 # --- 4. FUNCIONES INTERNAS ---
@@ -98,25 +87,25 @@ if "personalidad_key" not in st.session_state:
 
 # --- 6. BARRA LATERAL ---
 with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/3413/3413535.png", width=80)
-    st.title("Aluminia Settings")
+    st.image("https://cdn-icons-png.flaticon.com/512/3413/3413535.png", width=100)
+    st.title("Configuración")
     
     st.session_state.personalidad_key = st.selectbox(
-        "Tono de voz:", 
+        "Estilo del mentor:", 
         options=list(PERSONALIDADES.keys()),
         index=list(PERSONALIDADES.keys()).index(st.session_state.personalidad_key)
     )
     
     st.divider()
-    st.info("Modelo: Llama-3.3-70B\n\nModo: Dark Education")
+    st.success("Cerebro: Llama-3.3-70B")
     
-    if st.button("🗑️ Reset Chat"):
+    if st.button("🗑️ Reiniciar Tutoría"):
         st.session_state.messages = []
         st.rerun()
 
 # --- 7. INTERFAZ PRINCIPAL ---
 st.markdown('<h1 class="main-title">Aluminia</h1>', unsafe_allow_html=True)
-st.markdown(f'<p class="sub-title">Guía socrática en modo: {st.session_state.personalidad_key}</p>', unsafe_allow_html=True)
+st.markdown(f'<p class="sub-title">Conversando en modo: <b>{st.session_state.personalidad_key}</b></p>', unsafe_allow_html=True)
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
@@ -125,12 +114,12 @@ for msg in st.session_state.messages:
 # --- 8. LÓGICA DE PROCESAMIENTO ---
 api_key = st.secrets.get("GROQ_API_KEY")
 if not api_key:
-    st.error("GROQ_API_KEY no configurada.")
+    st.error("Falta la API KEY en los Secrets.")
     st.stop()
 
 client = Groq(api_key=api_key)
 
-if prompt := st.chat_input("¿Qué reto resolveremos hoy?"):
+if prompt := st.chat_input("¿Qué duda quieres explorar?"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
@@ -142,11 +131,11 @@ if prompt := st.chat_input("¿Qué reto resolveremos hoy?"):
         full_response = ""
         
         prompt_sistema = f"""
-        Eres Aluminia, mentora socrática de 16-18 años.
+        Eres Aluminia, mentora socrática de secundaria alta.
         IDENTIDAD: {PERSONALIDADES[st.session_state.personalidad_key]}
-        MÉTODO: Prohibido dar respuestas. Haz preguntas críticas.
-        CONOCIMIENTO EXTRA: {datos_wiki if datos_wiki else 'No disponible.'}
-        REGLAS: Usa LaTeX. Sé breve y desafiante.
+        MÉTODO: NUNCA des respuestas. Guía con preguntas inteligentes.
+        WIKI-CONTEXT: {datos_wiki if datos_wiki else 'Sin datos adicionales.'}
+        REGLAS: Usa LaTeX. Sé breve y fomenta la reflexión.
         """
 
         mensajes_api = [{"role": "system", "content": prompt_sistema}] + [
