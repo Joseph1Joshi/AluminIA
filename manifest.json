@@ -1,0 +1,15 @@
+{
+  "name": "Aluminia Tutor",
+  "short_name": "Aluminia",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e3a8a",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3413/3413535.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
