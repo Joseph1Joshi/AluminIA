@@ -50,7 +50,7 @@ def get_base64(bin_file):
 logo_data = get_base64("logo.png")
 LOGO_IMG = f"data:image/png;base64,{logo_data}" if logo_data else "https://cdn-icons-png.flaticon.com/512/3413/3413535.png"
 
-# --- 5. CSS MAESTRO (TODO INCLUIDO) ---
+# --- 5. CSS MAESTRO (METAL + BURBUJAS + FIRMA) ---
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap');
@@ -64,32 +64,27 @@ st.markdown(f"""
         margin-bottom: 10px;
     }}
 
-    [data-testid="stChatMessage"] {{ background-color: rgba(6, 40, 30, 0.5) !important; border-radius: 20px !important; border: 1px solid rgba(16, 185, 129, 0.1) !important; }}
+    [data-testid="stChatMessage"] {{ 
+        background-color: rgba(6, 40, 30, 0.5) !important; 
+        border-radius: 20px !important; 
+        border: 1px solid rgba(16, 185, 129, 0.1) !important;
+        margin-bottom: 1rem !important;
+    }}
+    
     header[data-testid="stHeader"] {{ background: rgba(0,0,0,0) !important; }}
     button[kind="headerNoSpacing"] {{ background-color: #10b981 !important; color: #020f0a !important; border-radius: 50% !important; }}
     [data-testid="stSidebar"] {{ background-color: #010805 !important; border-right: 1px solid #10b98122; }}
 
-    /* BADGE DE AUTOR FLOTANTE */
     .author-badge {{
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        color: #10b981;
-        font-size: 0.75rem;
-        font-weight: 800;
-        z-index: 999999;
-        background: rgba(6, 40, 30, 0.7);
-        padding: 6px 15px;
-        border-radius: 20px;
-        border: 1px solid rgba(16, 185, 129, 0.3);
-        backdrop-filter: blur(5px);
-        text-transform: uppercase;
-        letter-spacing: 1px;
+        position: fixed; bottom: 20px; right: 20px; color: #10b981; font-size: 0.75rem;
+        font-weight: 800; z-index: 999999; background: rgba(6, 40, 30, 0.7);
+        padding: 6px 15px; border-radius: 20px; border: 1px solid rgba(16, 185, 129, 0.3);
+        backdrop-filter: blur(5px); text-transform: uppercase;
     }}
     </style>
     """, unsafe_allow_html=True)
 
-# --- 6. LÓGICA DE USUARIO ---
+# --- 6. LÓGICA DE SESIÓN ---
 if "user" not in st.session_state: st.session_state.user = None
 if "messages" not in st.session_state: st.session_state.messages = []
 if "chat_id" not in st.session_state: st.session_state.chat_id = None
@@ -97,8 +92,7 @@ if "chat_id" not in st.session_state: st.session_state.chat_id = None
 if st.session_state.user is None:
     st.markdown('<div style="margin-top:12vh;"></div>', unsafe_allow_html=True)
     st.markdown('<div class="aluminia-metal">ALUMINIA</div>', unsafe_allow_html=True)
-    # CRÉDITO EN LOGIN
-    st.markdown("<p style='text-align: center; color: #10b981; margin-top: -15px; font-weight: 700; letter-spacing: 2px;'>Proyecto por Joseph Torifio</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #10b981; margin-top: -15px; font-weight: 700; letter-spacing: 2px;'>MADE BY TU NOMBRE</p>", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([0.1, 0.8, 0.1])
     with col2:
@@ -140,10 +134,9 @@ with st.sidebar:
     st.divider()
     if st.button("🚪 Salir", use_container_width=True):
         supabase.auth.sign_out(); st.session_state.user = None; st.rerun()
-
-    # CRÉDITO EN SIDEBAR (AL FINAL)
+    
     st.markdown("<br>"*3, unsafe_allow_html=True)
-    st.markdown("<div style='text-align: center; color: #10b981; opacity: 0.5; font-size: 0.7rem;'>PROTOTYPE BY<br><b>de Joseph Torifio</b></div>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align: center; color: #10b981; opacity: 0.5; font-size: 0.7rem;'>DEVELOPED BY<br><b>TU NOMBRE</b></div>", unsafe_allow_html=True)
 
 # --- 8. INTERFAZ DE CHAT ---
 st.markdown('<div class="aluminia-metal" style="font-size:1.8rem; text-align:left;">ALUMINIA</div>', unsafe_allow_html=True)
@@ -152,7 +145,7 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"], avatar=LOGO_IMG if msg["role"] == "assistant" else "👤"):
         st.markdown(msg["content"])
 
-# --- 9. MOTOR DE IA ---
+# --- 9. MOTOR DE IA (CONFIGURACIÓN AVANZADA) ---
 if prompt := st.chat_input("Plantea tu duda..."):
     with st.chat_message("user", avatar="👤"):
         st.markdown(prompt)
@@ -163,12 +156,24 @@ if prompt := st.chat_input("Plantea tu duda..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     guardar_mensaje_en_db(st.session_state.chat_id, "user", prompt)
 
+    # PARÁMETROS DE COMPORTAMIENTO
+    SYSTEM_PROMPT = (
+        "Eres Aluminia, un mentor socrático avanzado. Tu misión no es resolver, sino guiar. "
+        "REGLAS: 1. Responde preguntas con nuevas preguntas que inviten a la lógica. "
+        "2. Si el alumno está perdido, usa una analogía sencilla. 3. Nunca des la respuesta final. "
+        "4. Formato: Párrafos cortos, usa negritas para conceptos clave y mantén un tono elegante."
+    )
+
     with st.chat_message("assistant", avatar=LOGO_IMG):
         full_res = ""; holder = st.empty()
         client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+        
         stream = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
-            messages=[{"role": "system", "content": "Eres Aluminia, mentor socrático."}] + st.session_state.messages,
+            messages=[{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages[-8:], # Memoria optimizada
+            temperature=0.6, # Equilibrio entre creatividad y rigor
+            top_p=0.9,
+            max_tokens=900,
             stream=True
         )
         for chunk in stream:
@@ -179,5 +184,5 @@ if prompt := st.chat_input("Plantea tu duda..."):
     st.session_state.messages.append({"role": "assistant", "content": full_res})
     guardar_mensaje_en_db(st.session_state.chat_id, "assistant", full_res)
 
-# CRÉDITO FLOTANTE (ESTO SIEMPRE SE VERÁ)
-st.markdown('<div class="author-badge">de Joseph Torifio</div>', unsafe_allow_html=True)
+# CRÉDITO FLOTANTE
+st.markdown('<div class="author-badge">BY TU NOMBRE</div>', unsafe_allow_html=True)
