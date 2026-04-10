@@ -178,10 +178,11 @@ st.markdown(f"""
 
 # --- 4. SIDEBAR ---
 with st.sidebar:
-    st.markdown(f'<div style="text-align:center"><img src="{LOGO_IMG}" width="100" style="border-radius:15px; filter: drop-shadow(0px 0px 15px rgba(16,185,129,0.7));"></div>', unsafe_allow_html=True)
-    st.markdown("<h2 style='text-align:center;'>Configuración</h2>", unsafe_allow_html=True)
-    estilo = st.selectbox("Personalidad Socrática:", ["Aluminia Original 💡", "Cercana 👋", "Práctica 🛠️", "Analítica 🔍", "Coach ⚡"])
-    if st.button("🗑️ Reiniciar Chat", use_container_width=True):
+    if st.button("➕ Nueva Consulta Socrática", use_container_width=True):
+        # 1. Creamos el chat en la base de datos
+        nuevo_id = crear_nuevo_chat_db()
+        # 2. Le decimos a Streamlit que este es el chat activo
+        st.session_state.chat_actual_id = nuevo_id
         st.session_state.messages = []
         st.rerun()
 
