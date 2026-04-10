@@ -128,25 +128,33 @@ if "chat_id" not in st.session_state:
 
 # --- 6. BARRA LATERAL (DEFINICIÓN DE VARIABLES) ---
 with st.sidebar:
-    st.markdown(f'<div style="text-align:center; margin-bottom:20px;"><img src="{LOGO_IMG}" width="110" style="border-radius:20px; filter: drop-shadow(0px 0px 15px rgba(16,185,129,0.5));"></div>', unsafe_allow_html=True)
+    # ... (tus logos y configuraciones anteriores) ...
+
+    st.markdown("### 📜 Historial de Chats")
     
-    st.markdown("""<div class="sidebar-box"><p style="margin:0; font-size: 0.7rem; color: #a7f3d0;">SISTEMA ACTIVO</p><b>Llama-3.3-70b-Versatile</b></div>""", unsafe_allow_html=True)
-    
-    st.subheader("🛠️ Configuración")
-    # Aquí definimos 'estilo' para que no de NameError
-    estilo = st.selectbox("Personalidad:", ["Aluminia Original 💡", "Cercana 👋", "Práctica 🛠️", "Analítica 🔍", "Coach ⚡"])
-    
-    st.divider()
-    
+    # Botón para limpiar y empezar de cero
     if st.button("➕ Nuevo Chat", use_container_width=True):
         st.session_state.messages = []
         st.session_state.chat_id = None
         st.rerun()
-        
-    st.divider()
-    st.markdown("### 📊 Tu Progreso")
-    st.progress(min(len(st.session_state.messages) * 10, 100))
 
+    st.divider()
+
+    # Listar chats desde Supabase
+    try:
+        chats_viejos = obtener_historial_chats()
+        for chat in chats_viejos:
+            # Botón estilizado para cada chat previo
+            if st.button(f"💬 {chat['titulo'][:20]}...", key=chat['id'], use_container_width=True):
+                st.session_state.chat_id = chat['id']
+                # Cargar mensajes de ese chat
+                mensajes_db = obtener_mensajes_del_chat(chat['id'])
+                st.session_state.messages = [
+                    {"role": m["role"], "content": m["content"]} for m in mensajes_db
+                ]
+                st.rerun()
+    except:
+        st.caption("Aún no hay chats guardados.")
 # --- 7. INTERFAZ PRINCIPAL ---
 st.markdown('<div class="aluminia-title">ALUMINIA</div>', unsafe_allow_html=True)
 st.markdown('<div class="aluminia-sub">Enciende la chispa del conocimiento propio.</div>', unsafe_allow_html=True)
