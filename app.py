@@ -174,31 +174,23 @@ if not api_key:
 client = Groq(api_key=api_key)
 
 if prompt := st.chat_input("¿Qué vamos a descubrir hoy?"):
-    # Guardar mensaje de usuario
+    # 1. Si es el primer mensaje, creamos el chat en la DB
+    if st.session_state.chat_id is None:
+        # Usamos las primeras palabras del prompt como título
+        titulo_corto = prompt[:30]
+        st.session_state.chat_id = crear_chat_en_db(titulo_corto)
+
+    # 2. Guardar mensaje del usuario
     st.session_state.messages.append({"role": "user", "content": prompt})
+    guardar_mensaje_en_db(st.session_state.chat_id, "user", prompt)
+    
     with st.chat_message("user", avatar="👤"):
         st.markdown(prompt)
 
-    # Respuesta del asistente
+    # 3. Generar y guardar respuesta de Aluminia
     with st.chat_message("assistant", avatar=LOGO_IMG):
-        full_res = ""
-        holder = st.empty()
+        # ... (aquí va tu lógica de stream actual) ...
         
-        # System Prompt optimizado
-        sys_prompt = f"Eres Aluminia. Estilo: {estilo}. NUNCA des respuestas. Usa el método socrático. Usa LaTeX ($$) para fórmulas. Párrafos cortos y negritas."
-
-        stream = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "system", "content": sys_prompt}] + st.session_state.messages,
-            stream=True
-        )
-
-        for chunk in stream:
-            content = chunk.choices[0].delta.content or ""
-            full_res += content
-            holder.markdown(full_res + "▌")
-        
-        holder.markdown(full_res)
+        # Al terminar el stream, guardamos en DB
+        guardar_mensaje_en_db(st.session_state.chat_id, "assistant", full_res)
         st.session_state.messages.append({"role": "assistant", "content": full_res})
-        
-        # Opcional: Aquí llamarías a guardar_mensaje_db(st.session_state.chat_id, ...)
