@@ -5,7 +5,23 @@ import wikipedia
 # --- 1. CONFIGURACIÓN ---
 wikipedia.set_lang("es")
 st.set_page_config(page_title="Aluminia", page_icon="🎓", layout="centered")
-
+# --- PARCHE PARA PWA ---
+st.components.v1.html(
+    """
+    <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('https://tu-app.streamlit.app/sw.js').then(function(registration) {
+          console.log('ServiceWorker registration successful with scope: ', registration.scope);
+        }, function(err) {
+          console.log('ServiceWorker registration failed: ', err);
+        });
+      });
+    }
+    </script>
+    """,
+    height=0,
+)
 # --- 2. CONFIGURACIÓN DE LOGOS ---
 # Puedes usar un emoji o una URL de una imagen (en formato .png o .jpg)
 LOGO_USUARIO = "👤" 
