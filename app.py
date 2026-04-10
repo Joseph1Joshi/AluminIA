@@ -6,33 +6,18 @@ import wikipedia
 wikipedia.set_lang("es")
 st.set_page_config(page_title="Aluminia", page_icon="🎓", layout="centered")
 
-# --- 2. CSS PROTEGIDO (No rompe iconos) ---
+# --- 2. CONFIGURACIÓN DE LOGOS ---
+# Puedes usar un emoji o una URL de una imagen (en formato .png o .jpg)
+LOGO_USUARIO = "👤" 
+LOGO_ALUMINIA = "https://cdn-icons-png.flaticon.com/512/3413/3413535.png" # Ejemplo de logo
+
+# --- 3. CSS PROTEGIDO ---
 st.markdown("""
     <style>
-    /* Fondo */
-    .stApp {
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-    }
-
-    /* Títulos con clases personalizadas para no heredar estilos de sistema */
-    .aluminia-title {
-        font-family: sans-serif;
-        color: #1e3a8a;
-        text-align: center;
-        font-size: 40px;
-        font-weight: bold;
-        padding-top: 20px;
-    }
-
-    .aluminia-sub {
-        font-family: sans-serif;
-        text-align: center;
-        color: #4b5563;
-        font-size: 16px;
-        margin-bottom: 30px;
-    }
-
-    /* Burbujas de chat: usamos selectores que no tocan los iconos del avatar */
+    .stApp { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); }
+    .aluminia-title { font-family: sans-serif; color: #1e3a8a; text-align: center; font-size: 40px; font-weight: bold; padding-top: 20px; }
+    .aluminia-sub { font-family: sans-serif; text-align: center; color: #4b5563; font-size: 16px; margin-bottom: 30px; }
+    
     [data-testid="stChatMessage"] {
         background-color: rgba(255, 255, 255, 0.9) !important;
         border-radius: 15px !important;
@@ -40,26 +25,18 @@ st.markdown("""
         box-shadow: 0 4px 10px rgba(0,0,0,0.05);
     }
 
-    /* Ajuste para que el texto de las burbujas sea legible pero NO rompa los iconos */
-    [data-testid="stChatMessage"] .st-expanderHeader, 
-    [data-testid="stChatMessage"] p, 
-    [data-testid="stChatMessage"] li {
-        font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
-        line-height: 1.6;
+    /* Fix para asegurar que las imágenes de los avatares no se deformen */
+    [data-testid="stChatMessage"] img {
+        border-radius: 50%;
+        object-fit: cover;
     }
 
-    /* Escondemos basura de la UI pero dejamos el header funcional para el menú */
     footer {visibility: hidden;}
     header {background: rgba(0,0,0,0) !important;}
-    
-    /* Evitar que los iconos se conviertan en texto plano */
-    span[data-testid="stIconMaterial"] {
-        font-family: "Material Symbols Outlined" !important;
-    }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. LOGICA Y PERSONALIDADES ---
+# --- 4. LÓGICA DE PERSONALIDADES ---
 PERSONALIDADES = {
     "Aluminia Original 💡": "Eres neutra y profesional.",
     "Cercana y Casual 👋": "Eres relajada, como una hermana mayor.",
@@ -70,49 +47,51 @@ PERSONALIDADES = {
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
-if "personalidad_key" not in st.session_state:
-    st.session_state.personalidad_key = "Aluminia Original 💡"
 
-# --- 4. SIDEBAR ---
+# --- 5. SIDEBAR ---
 with st.sidebar:
     st.header("Configuración")
     st.session_state.personalidad_key = st.selectbox(
-        "Estilo del mentor:", 
-        options=list(PERSONALIDADES.keys())
+        "Estilo del mentor:", options=list(PERSONALIDADES.keys())
     )
     if st.button("Limpiar conversación"):
         st.session_state.messages = []
         st.rerun()
 
-# --- 5. INTERFAZ ---
+# --- 6. INTERFAZ ---
 st.markdown('<div class="aluminia-title">Aluminia</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="aluminia-sub">Modo: <b>{st.session_state.personalidad_key}</b></div>', unsafe_allow_html=True)
 
+# MOSTRAR MENSAJES CON LOGOS CUSTOM
 for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
+    # Si el rol es assistant usa el logo de Aluminia, si no el del usuario
+    avatar_actual = LOGO_ALUMINIA if msg["role"] == "assistant" else LOGO_USUARIO
+    with st.chat_message(msg["role"], avatar=avatar_actual):
         st.markdown(msg["content"])
 
-# --- 6. API GROQ ---
+# --- 7. PROCESAMIENTO ---
 api_key = st.secrets.get("GROQ_API_KEY")
 if not api_key:
-    st.error("Configura la API KEY en los Secrets.")
+    st.error("Configura la API KEY.")
     st.stop()
 
 client = Groq(api_key=api_key)
 
 if prompt := st.chat_input("¿En qué te puedo ayudar?"):
+    # Guardar mensaje del usuario
     st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
+    with st.chat_message("user", avatar=LOGO_USUARIO):
         st.markdown(prompt)
 
-    # Wikipedia invisible
+    # Wiki invisible
     try:
         search_results = wikipedia.search(prompt)
         datos_wiki = wikipedia.summary(search_results[0], sentences=2) if search_results else ""
     except:
         datos_wiki = ""
 
-    with st.chat_message("assistant"):
+    # Respuesta del asistente
+    with st.chat_message("assistant", avatar=LOGO_ALUMINIA):
         full_response = ""
         placeholder = st.empty()
         
