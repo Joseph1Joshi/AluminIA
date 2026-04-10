@@ -22,7 +22,31 @@ def conectar_supabase():
         return None
 
 supabase = conectar_supabase()
+# --- FUNCIONES DE PERSISTENCIA ---
 
+def crear_chat_en_db(titulo="Nueva Consulta"):
+    """Crea un registro en la tabla 'chats' y devuelve su ID"""
+    res = supabase.table("chats").insert({"titulo": titulo}).execute()
+    return res.data[0]['id']
+
+def guardar_mensaje_en_db(chat_id, role, content):
+    """Guarda cada mensaje vinculado a un chat_id"""
+    if chat_id:
+        supabase.table("mensajes").insert({
+            "chat_id": chat_id,
+            "role": role,
+            "content": content
+        }).execute()
+
+def obtener_historial_chats():
+    """Trae la lista de todos los chats para la barra lateral"""
+    res = supabase.table("chats").select("*").order("created_at", desc=True).execute()
+    return res.data
+
+def obtener_mensajes_del_chat(chat_id):
+    """Trae los mensajes de un chat específico al seleccionarlo"""
+    res = supabase.table("mensajes").select("*").eq("chat_id", chat_id).order("created_at").execute()
+    return res.data
 # --- 3. CARGA DE LOGO ---
 def get_base64(bin_file):
     try:
