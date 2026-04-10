@@ -10,50 +10,50 @@ st.set_page_config(
     layout="centered"
 )
 
-# --- 2. DECORACIÓN Y ESTILO CLARO (CSS) ---
+# --- 2. DECORACIÓN Y ESTILO ESTÁNDAR (CSS) ---
 st.markdown("""
     <style>
-    /* Fondo con degradado sutil y claro */
+    /* Fondo con degradado sutil */
     .stApp {
         background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
     }
     
-    /* Contenedor de mensajes con efecto cristal (Glassmorphism) */
+    /* Contenedor de mensajes con fuentes estándar y más espacio interno */
     .stChatMessage {
-        background-color: rgba(255, 255, 255, 0.9) !important;
-        border-radius: 20px !important;
-        padding: 15px !important;
+        background-color: rgba(255, 255, 255, 0.95) !important;
+        border-radius: 15px !important;
+        padding: 20px !important; /* Más espacio para evitar desbordamiento */
         margin-bottom: 15px !important;
-        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
-        backdrop-filter: blur(4px);
-        border: 1px solid rgba(255, 255, 255, 0.18) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        border: 1px solid #e0e0e0 !important;
     }
 
-    /* Título principal elegante */
+    /* Forzar fuentes normales del sistema para máxima compatibilidad */
+    html, body, [class*="st-"] {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+    }
+
+    /* Título principal sin fuentes externas */
     .main-title {
-        font-family: 'Inter', sans-serif;
         color: #1e3a8a;
         text-align: center;
-        font-size: 3rem;
-        font-weight: 800;
+        font-size: 2.5rem;
+        font-weight: bold;
         margin-bottom: 0.5rem;
     }
 
-    /* Subtítulos */
     .sub-title {
         text-align: center;
         color: #4b5563;
-        font-size: 1.1rem;
+        font-size: 1rem;
         margin-bottom: 2rem;
     }
 
-    /* Input del chat */
+    /* Ajuste del input de chat */
     .stChatInputContainer {
-        border-radius: 25px !important;
-        background-color: white !important;
+        border-radius: 10px !important;
     }
 
-    /* Limpieza de la interfaz de Streamlit */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
@@ -104,8 +104,8 @@ with st.sidebar:
         st.rerun()
 
 # --- 7. INTERFAZ PRINCIPAL ---
-st.markdown('<h1 class="main-title">Aluminia</h1>', unsafe_allow_html=True)
-st.markdown(f'<p class="sub-title">Conversando en modo: <b>{st.session_state.personalidad_key}</b></p>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">Aluminia</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="sub-title">Conversando en modo: <b>{st.session_state.personalidad_key}</b></div>', unsafe_allow_html=True)
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
