@@ -130,4 +130,4 @@ if prompt := st.chat_input("¿En qué desafío estás trabajando?"):
         
         response_placeholder.markdown(full_response)
     
-  st.session_state.messages.append({"role": "assistant", "content": full_response})
+st.session_state.messages.append({"role": "assistant", "content": full_response})
