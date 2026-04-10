@@ -1,0 +1,7 @@
+[theme]
+primaryColor = "#10b981"
+backgroundColor = "#020f0a"
+secondaryBackgroundColor = "#010805"
+textColor = "#ecfdf5"
+font = "sans serif"
+base = "dark" # <--- ESTO fuerzo el modo oscuro
