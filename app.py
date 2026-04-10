@@ -1,132 +1,173 @@
 import streamlit as st
 from groq import Groq
 import wikipedia
+import base64
 
-# --- 1. CONFIGURACIÓN ---
-wikipedia.set_lang("es")
-st.set_page_config(page_title="Aluminia", page_icon="🎓", layout="centered")
-# --- PARCHE PARA PWA ---
-st.components.v1.html(
-    """
-    <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function() {
-        navigator.serviceWorker.register('https://aluminia.streamlit.app/sw.js').then(function(registration) {
-          console.log('ServiceWorker registration successful with scope: ', registration.scope);
-        }, function(err) {
-          console.log('ServiceWorker registration failed: ', err);
-        });
-      });
-    }
-    </script>
-    """,
-    height=0,
+# --- 1. CONFIGURACIÓN DE PÁGINA ---
+st.set_page_config(
+    page_title="Aluminia Tutor", 
+    page_icon="🎓", 
+    layout="wide" # Cambiamos a wide para controlar los márgenes nosotros
 )
-# --- 2. CONFIGURACIÓN DE LOGOS ---
-# Puedes usar un emoji o una URL de una imagen (en formato .png o .jpg)
-LOGO_USUARIO = "👤" 
-LOGO_ALUMINIA = "https://cdn-icons-png.flaticon.com/512/3413/3413535.png" # Ejemplo de logo
 
-# --- 3. CSS PROTEGIDO ---
-st.markdown("""
+# --- 2. CARGA DE LOGO PERSONALIZADO ---
+def get_base64(bin_file):
+    with open(bin_file, 'rb') as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
+
+try:
+    # Intenta cargar tu diseño guardado como 'logo.png'
+    logo_base64 = get_base64("logo.png")
+    LOGO_IMG = f"data:image/png;base64,{logo_base64}"
+except:
+    # Logo de respaldo si el archivo no existe
+    LOGO_IMG = "https://cdn-icons-png.flaticon.com/512/3413/3413535.png"
+
+# --- 3. CSS MAESTRO (PROPORCIONES Y ESTÉTICA) ---
+st.markdown(f"""
     <style>
-    .stApp { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); }
-    .aluminia-title { font-family: sans-serif; color: #1e3a8a; text-align: center; font-size: 40px; font-weight: bold; padding-top: 20px; }
-    .aluminia-sub { font-family: sans-serif; text-align: center; color: #4b5563; font-size: 16px; margin-bottom: 30px; }
+    /* Importar fuente moderna */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+
+    /* Fondo animado sutil */
+    .stApp {{
+        background: linear-gradient(135deg, #f8f9fc 0%, #e2e8f0 100%);
+        font-family: 'Inter', sans-serif !important;
+    }}
+
+    /* Limitar el ancho en PC para que no se vea "estirado" */
+    .block-container {{
+        max-width: 800px;
+        padding-top: 2rem;
+        padding-bottom: 10rem;
+    }}
+
+    /* Optimización para MÓVILES */
+    @media (max-width: 640px) {{
+        .block-container {{
+            padding-left: 1rem;
+            padding-right: 1rem;
+            padding-top: 1rem;
+        }}
+        .aluminia-title {{ font-size: 2.2rem !important; }}
+    }}
+
+    /* Título de alta gama */
+    .aluminia-title {{
+        font-weight: 800;
+        color: #1e3a8a;
+        text-align: center;
+        font-size: 3.5rem;
+        letter-spacing: -2px;
+        margin-bottom: 0px;
+    }}
+
+    .aluminia-sub {{
+        text-align: center;
+        color: #64748b;
+        font-size: 1rem;
+        margin-bottom: 2rem;
+        font-weight: 400;
+    }}
+
+    /* Burbujas de Chat estilo Glassmorphism */
+    [data-testid="stChatMessage"] {{
+        background: rgba(255, 255, 255, 0.7) !important;
+        backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        border-radius: 24px !important;
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05) !important;
+        margin-bottom: 1.2rem !important;
+        transition: transform 0.2s ease;
+    }}
+
+    /* Avatar circular y estilizado */
+    [data-testid="stChatMessage"] img {{
+        border-radius: 12px !important;
+        border: 2px solid white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }}
+
+    /* Personalización del Input (Barra de escritura) */
+    .stChatInputContainer {{
+        border-radius: 20px !important;
+        border: 1px solid rgba(0,0,0,0.1) !important;
+        background: white !important;
+        box-shadow: 0 -10px 25px rgba(0,0,0,0.03) !important;
+    }}
+
+    /* Ocultar elementos de Streamlit para una experiencia limpia */
+    footer {{visibility: hidden;}}
+    header {{background: rgba(0,0,0,0) !important;}}
+    [data-testid="stHeader"] {{background: none !important;}}
     
-    [data-testid="stChatMessage"] {
-        background-color: rgba(255, 255, 255, 0.9) !important;
-        border-radius: 15px !important;
-        border: 1px solid #e0e0e0 !important;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-    }
-
-    /* Fix para asegurar que las imágenes de los avatares no se deformen */
-    [data-testid="stChatMessage"] img {
-        border-radius: 50%;
-        object-fit: cover;
-    }
-
-    footer {visibility: hidden;}
-    header {background: rgba(0,0,0,0) !important;}
+    /* Mejorar el renderizado de LaTeX */
+    .katex {{ font-size: 1.1em !important; color: #1e293b; }}
     </style>
     """, unsafe_allow_html=True)
 
-# --- 4. LÓGICA DE PERSONALIDADES ---
-PERSONALIDADES = {
-    "Aluminia Original 💡": "Eres neutra y profesional.",
-    "Cercana y Casual 👋": "Eres relajada, como una hermana mayor.",
-    "Enfoque Práctico 🛠️": "Eres directa y pragmática.",
-    "Mente Analítica 🔍": "Te enfocas en patrones y lógica.",
-    "Entrenadora (Coach) ⚡": "Eres motivadora y enérgica."
-}
+# --- 4. SIDEBAR REFINADA ---
+with st.sidebar:
+    st.markdown(f"""
+        <div style="text-align: center; padding: 1rem;">
+            <img src="{LOGO_IMG}" width="120" style="border-radius: 20%;">
+            <h2 style="color: #1e3a8a; margin-top: 10px;">Aluminia Tutor</h2>
+            <p style="font-size: 0.8rem; color: #64748b;">v2.0 Beta • Llama 3.3</p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    st.divider()
+    personalidad = st.selectbox(
+        "Estilo de Aprendizaje",
+        ["Aluminia Original 💡", "Cercana y Casual 👋", "Enfoque Práctico 🛠️", "Mente Analítica 🔍", "Entrenadora ⚡"]
+    )
+    
+    if st.button("🗑️ Nueva Sesión", use_container_width=True):
+        st.session_state.messages = []
+        st.rerun()
+
+# --- 5. CUERPO DE LA APP ---
+st.markdown('<div class="aluminia-title">Aluminia</div>', unsafe_allow_html=True)
+st.markdown('<div class="aluminia-sub">Tu mentora socrática impulsada por IA</div>', unsafe_allow_html=True)
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# --- 5. SIDEBAR ---
-with st.sidebar:
-    st.header("Configuración")
-    st.session_state.personalidad_key = st.selectbox(
-        "Estilo del mentor:", options=list(PERSONALIDADES.keys())
-    )
-    if st.button("Limpiar conversación"):
-        st.session_state.messages = []
-        st.rerun()
-
-# --- 6. INTERFAZ ---
-st.markdown('<div class="aluminia-title">Aluminia</div>', unsafe_allow_html=True)
-st.markdown(f'<div class="aluminia-sub">Modo: <b>{st.session_state.personalidad_key}</b></div>', unsafe_allow_html=True)
-
-# MOSTRAR MENSAJES CON LOGOS CUSTOM
+# Mostrar mensajes con el avatar personalizado
 for msg in st.session_state.messages:
-    # Si el rol es assistant usa el logo de Aluminia, si no el del usuario
-    avatar_actual = LOGO_ALUMINIA if msg["role"] == "assistant" else LOGO_USUARIO
-    with st.chat_message(msg["role"], avatar=avatar_actual):
+    avatar = LOGO_IMG if msg["role"] == "assistant" else "👤"
+    with st.chat_message(msg["role"], avatar=avatar):
         st.markdown(msg["content"])
 
-# --- 7. PROCESAMIENTO ---
+# --- 6. LÓGICA DE INTELIGENCIA ---
 api_key = st.secrets.get("GROQ_API_KEY")
 if not api_key:
-    st.error("Configura la API KEY.")
+    st.error("Error: API Key no encontrada.")
     st.stop()
 
 client = Groq(api_key=api_key)
 
-if prompt := st.chat_input("¿En qué te puedo ayudar?"):
-    # Guardar mensaje del usuario
+if prompt := st.chat_input("¿Qué vamos a descubrir hoy?"):
     st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user", avatar=LOGO_USUARIO):
+    with st.chat_message("user", avatar="👤"):
         st.markdown(prompt)
 
-    # Wiki invisible
-    try:
-        search_results = wikipedia.search(prompt)
-        datos_wiki = wikipedia.summary(search_results[0], sentences=2) if search_results else ""
-    except:
-        datos_wiki = ""
-
-    # Respuesta del asistente
-    with st.chat_message("assistant", avatar=LOGO_ALUMINIA):
-        full_response = ""
+    with st.chat_message("assistant", avatar=LOGO_IMG):
         placeholder = st.empty()
+        full_response = ""
         
-        prompt_sistema = f"""
-        Eres Aluminia, mentora socrática. 
-        Personalidad: {PERSONALIDADES[st.session_state.personalidad_key]}
-        Método: No des respuestas, haz preguntas. Usa LaTeX ($$) para fórmulas.
-        Contexto extra: {datos_wiki}
-        """
+        # El System Prompt ahora incluye instrucciones de formato premium
+        sys_prompt = f"Eres Aluminia. Personalidad: {personalidad}. NUNCA des respuestas, usa el método socrático. Usa LaTeX $$ para fórmulas matemáticas centradas. Mantén párrafos cortos y usa negritas para enfatizar conceptos clave."
 
-        completion = client.chat.completions.create(
+        stream = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
-            messages=[{"role": "system", "content": prompt_sistema}] + 
-                     [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages],
-            temperature=0.6,
+            messages=[{"role": "system", "content": sys_prompt}] + st.session_state.messages,
             stream=True
         )
-        
-        for chunk in completion:
+
+        for chunk in stream:
             content = chunk.choices[0].delta.content or ""
             full_response += content
             placeholder.markdown(full_response + "▌")
