@@ -1,6 +1,7 @@
 import streamlit as st
 from groq import Groq
 import wikipedia
+import os
 
 # --- 1. CONFIGURACIÓN DE ENTORNO ---
 wikipedia.set_lang("es")
@@ -10,7 +11,8 @@ st.set_page_config(
     layout="centered"
 )
 
-# --- 2. DECORACIÓN Y ESTILO CORREGIDO (CSS) ---
+# --- 2. DECORACIÓN Y ESTILO PARCHADO (CSS) ---
+# He añadido reglas específicas para NO romper los iconos nativos de Streamlit
 st.markdown("""
     <style>
     /* Fondo general */
@@ -18,7 +20,7 @@ st.markdown("""
         background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
     }
     
-    /* Burbujas de chat: permitimos que el contenido (imágenes) fluya */
+    /* Burbujas de chat: diseño limpio */
     .stChatMessage {
         background-color: rgba(255, 255, 255, 0.95) !important;
         border-radius: 15px !important;
@@ -26,28 +28,29 @@ st.markdown("""
         margin-bottom: 1rem !important;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         border: 1px solid #e0e0e0 !important;
-        max-width: 100%;
     }
 
-    /* Asegurar que las imágenes en el chat se vean bien */
-    .stChatMessage img {
-        max-width: 100%;
-        border-radius: 10px;
-        margin: 10px 0;
-    }
-
-    /* Fuentes del sistema */
-    html, body, [class*="st-"] {
+    /* --- PARCHE CRÍTICO PARA ICONOS ROTOS --- */
+    /* Forzamos la fuente normal SOLO en los contenedores de TEXTO del chat */
+    .stChatMessage .st-bf, .stChatMessage p, .stChatMessage span:not(.material-icons-renderer) {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
     }
+    
+    /* Aseguramos que los iconos nativos de Streamlit USEN su propia fuente */
+    [data-testid="stIconContainer"] *, .material-icons-renderer {
+        font-family: 'Material Icons' !important;
+        font-style: normal;
+    }
+    /* ---------------------------------------- */
 
-    /* Títulos */
+    /* Títulos con margen corregido para que no se corten */
     .main-title {
         color: #1e3a8a;
         text-align: center;
         font-size: 2.5rem;
         font-weight: bold;
-        margin-top: -2rem;
+        margin-top: 0rem; /* Corregido: ya no se sube demasiado */
+        padding-top: 1rem;
     }
 
     .sub-title {
@@ -57,13 +60,11 @@ st.markdown("""
         margin-bottom: 2rem;
     }
 
-    /* CORRECCIÓN: Ocultar solo elementos estéticos, NO funcionales */
+    /* Elementos de interfaz ocultos pero funcionales */
     footer {visibility: hidden;}
     header {background-color: transparent !important;}
     [data-testid="stHeader"] {background: none !important;}
 
-    /* Mejorar bloques de código y fórmulas */
-    code { color: #d63384; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -91,7 +92,7 @@ if "messages" not in st.session_state:
 if "personalidad_key" not in st.session_state:
     st.session_state.personalidad_key = "Aluminia Original 💡"
 
-# --- 5. SIDEBAR (CORREGIDA) ---
+# --- 5. SIDEBAR ---
 with st.sidebar:
     st.markdown("### ⚙️ Configuración")
     st.session_state.personalidad_key = st.selectbox(
@@ -105,9 +106,11 @@ with st.sidebar:
         st.rerun()
 
 # --- 6. INTERFAZ ---
+# Usamos divs con clases para aplicar el CSS corregido
 st.markdown('<div class="main-title">Aluminia</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="sub-title">Modo: <b>{st.session_state.personalidad_key}</b></div>', unsafe_allow_html=True)
 
+# Mostrar historial de chat
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
@@ -115,7 +118,11 @@ for msg in st.session_state.messages:
 # --- 7. LÓGICA ---
 api_key = st.secrets.get("GROQ_API_KEY")
 if not api_key:
-    st.error("Falta la API KEY.")
+    # Intento de leer de variable de entorno si no está en secrets (para local)
+    api_key = os.environ.get("GROQ_API_KEY")
+
+if not api_key:
+    st.error("Falta la GROQ_API_KEY. Configúrala en los Secrets de Streamlit.")
     st.stop()
 
 client = Groq(api_key=api_key)
@@ -132,31 +139,34 @@ if prompt := st.chat_input("¿Qué exploramos hoy?"):
         full_response = ""
         
         prompt_sistema = f"""
-        Eres Aluminia, mentora socrática.
+        Eres Aluminia, mentora socrática para estudiantes de 16-18 años.
         IDENTIDAD: {PERSONALIDADES[st.session_state.personalidad_key]}
         REGLAS DE FORMATO:
-        - USA BLOQUES $$ para fórmulas largas.
-        - USA $ para variables en línea.
-        - Si necesitas explicar algo visual, describe la imagen o usa diagramas sencillos.
-        - NUNCA des la respuesta directa.
-        CONTEXTO: {datos_wiki if datos_wiki else 'Sin datos extra.'}
+        - USA BLOQUES $$ para fórmulas largas y centradas.
+        - USA $ para variables simples en línea (ej: $x$).
+        - NUNCA des la respuesta directa. Guía con preguntas.
+        CONTEXTO WIKIPEDIA: {datos_wiki if datos_wiki else 'Sin datos extra.'}
         """
 
         mensajes_api = [{"role": "system", "content": prompt_sistema}] + [
             {"role": m["role"], "content": m["content"]} for m in st.session_state.messages
         ]
         
-        completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=mensajes_api,
-            temperature=0.5, 
-            stream=True
-        )
-        
-        for chunk in completion:
-            content = chunk.choices[0].delta.content or ""
-            full_response += content
-            response_placeholder.markdown(full_response + "▌")
-        
-        response_placeholder.markdown(full_response)
-        st.session_state.messages.append({"role": "assistant", "content": full_response})
+        try:
+            completion = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=mensajes_api,
+                temperature=0.5, 
+                stream=True
+            )
+            
+            for chunk in completion:
+                content = chunk.choices[0].delta.content or ""
+                full_response += content
+                response_placeholder.markdown(full_response + "▌")
+            
+            response_placeholder.markdown(full_response)
+            st.session_state.messages.append({"role": "assistant", "content": full_response})
+            
+        except Exception as e:
+            st.error(f"Ocurrió un error con la API: {e}")
