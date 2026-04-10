@@ -2,7 +2,36 @@ import streamlit as st
 from groq import Groq
 import wikipedia
 import base64
+from supabase import create_client, Client
 
+# --- CONEXIÓN INVISIBLE CON SUPABASE ---
+@st.cache_resource # Esto evita que se conecte mil veces y sea más rápido
+def conectar_supabase():
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    return create_client(url, key)
+
+supabase = conectar_supabase()
+
+# --- FUNCIONES MAESTRAS DE ALUMINIA ---
+
+def crear_nuevo_chat_db(titulo="Nueva Exploración"):
+    # Crea un chat y nos devuelve su ID único
+    res = supabase.table("chats").insert({"titulo": titulo}).execute()
+    return res.data[0]['id']
+
+def guardar_mensaje_db(chat_id, role, content):
+    # Guarda cada frase del usuario o de Aluminia
+    supabase.table("mensajes").insert({
+        "chat_id": chat_id,
+        "role": role,
+        "content": content
+    }).execute()
+
+def cargar_mensajes_de_chat(chat_id):
+    # Trae los mensajes viejos cuando cambias de chat
+    res = supabase.table("mensajes").select("*").eq("chat_id", chat_id).order("created_at").execute()
+    return res.data
 # --- 1. CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(
     page_title="Aluminia Tutor | Green Edition", 
