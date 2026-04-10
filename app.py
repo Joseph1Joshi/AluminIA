@@ -87,3 +87,35 @@ if prompt := st.chat_input("¿En qué desafío estás trabajando?"):
     datos_wiki = investigar_silenciosamente(prompt)
 
     with st.chat_message("assistant"):
+        response_placeholder = st.empty()
+        full_response = ""
+        
+        # System Prompt Blindado
+        prompt_sistema = f"""
+        Tu nombre es Aluminia. Eres una mentora socrática experta para estudiantes de secundaria alta.
+        IDENTIDAD LINGÜÍSTICA: {PERSONALIDADES[st.session_state.personalidad_key]}
+        MÉTODO SOCRÁTICO: NUNCA des la respuesta. Guía mediante preguntas.
+        CONTEXTO WIKI: {datos_wiki if datos_wiki else 'Sin datos adicionales.'}
+        REGLAS: Usa LaTeX para fórmulas (ej: $x^2$). Sé breve.
+        """
+
+        mensajes_api = [{"role": "system", "content": prompt_sistema}] + [
+            {"role": m["role"], "content": m["content"]} for m in st.session_state.messages
+        ]
+        
+        completion = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=mensajes_api,
+            temperature=0.5, 
+            stream=True
+        )
+        
+        for chunk in completion:
+            content = chunk.choices[0].delta.content or ""
+            full_response += content
+            response_placeholder.markdown(full_response + "▌")
+        
+        response_placeholder.markdown(full_response)
+        
+        # Guardar la respuesta del asistente DENTRO del bloque del chat
+        st.session_state.messages.append({"role": "assistant", "content": full_response})
