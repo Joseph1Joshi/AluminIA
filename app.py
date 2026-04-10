@@ -50,7 +50,7 @@ def get_base64(bin_file):
 logo_data = get_base64("logo.png")
 LOGO_IMG = f"data:image/png;base64,{logo_data}" if logo_data else "https://cdn-icons-png.flaticon.com/512/3413/3413535.png"
 
-# --- 5. CSS MAESTRO (METAL + FIXES) ---
+# --- 5. CSS MAESTRO (TODO INCLUIDO) ---
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap');
@@ -68,7 +68,24 @@ st.markdown(f"""
     header[data-testid="stHeader"] {{ background: rgba(0,0,0,0) !important; }}
     button[kind="headerNoSpacing"] {{ background-color: #10b981 !important; color: #020f0a !important; border-radius: 50% !important; }}
     [data-testid="stSidebar"] {{ background-color: #010805 !important; border-right: 1px solid #10b98122; }}
-    .author-footer {{ position: fixed; bottom: 15px; right: 20px; color: #10b981; font-size: 0.7rem; font-weight: 600; background: rgba(6,40,30,0.5); padding: 5px 10px; border-radius: 15px; }}
+
+    /* BADGE DE AUTOR FLOTANTE */
+    .author-badge {{
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        color: #10b981;
+        font-size: 0.75rem;
+        font-weight: 800;
+        z-index: 999999;
+        background: rgba(6, 40, 30, 0.7);
+        padding: 6px 15px;
+        border-radius: 20px;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        backdrop-filter: blur(5px);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -78,8 +95,11 @@ if "messages" not in st.session_state: st.session_state.messages = []
 if "chat_id" not in st.session_state: st.session_state.chat_id = None
 
 if st.session_state.user is None:
+    st.markdown('<div style="margin-top:12vh;"></div>', unsafe_allow_html=True)
     st.markdown('<div class="aluminia-metal">ALUMINIA</div>', unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #10b981; margin-top: -15px;'>BY TU NOMBRE</p>", unsafe_allow_html=True)
+    # CRÉDITO EN LOGIN
+    st.markdown("<p style='text-align: center; color: #10b981; margin-top: -15px; font-weight: 700; letter-spacing: 2px;'>Proyecto por Joseph Torifio</p>", unsafe_allow_html=True)
+    
     col1, col2, col3 = st.columns([0.1, 0.8, 0.1])
     with col2:
         t1, t2 = st.tabs(["Entrar", "Unirse"])
@@ -121,29 +141,28 @@ with st.sidebar:
     if st.button("🚪 Salir", use_container_width=True):
         supabase.auth.sign_out(); st.session_state.user = None; st.rerun()
 
+    # CRÉDITO EN SIDEBAR (AL FINAL)
+    st.markdown("<br>"*3, unsafe_allow_html=True)
+    st.markdown("<div style='text-align: center; color: #10b981; opacity: 0.5; font-size: 0.7rem;'>PROTOTYPE BY<br><b>de Joseph Torifio</b></div>", unsafe_allow_html=True)
+
 # --- 8. INTERFAZ DE CHAT ---
 st.markdown('<div class="aluminia-metal" style="font-size:1.8rem; text-align:left;">ALUMINIA</div>', unsafe_allow_html=True)
 
-# Mostrar mensajes cargados
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"], avatar=LOGO_IMG if msg["role"] == "assistant" else "👤"):
         st.markdown(msg["content"])
 
-# --- 9. MOTOR DE IA (CORREGIDO) ---
+# --- 9. MOTOR DE IA ---
 if prompt := st.chat_input("Plantea tu duda..."):
-    # 1. Mostrar mensaje del usuario inmediatamente
     with st.chat_message("user", avatar="👤"):
         st.markdown(prompt)
     
-    # 2. Si es un chat nuevo, crearlo en DB
     if st.session_state.chat_id is None:
         st.session_state.chat_id = crear_chat_en_db(prompt[:30], st.session_state.user.id)
     
-    # 3. Guardar en memoria y DB
     st.session_state.messages.append({"role": "user", "content": prompt})
     guardar_mensaje_en_db(st.session_state.chat_id, "user", prompt)
 
-    # 4. Generar respuesta de la IA
     with st.chat_message("assistant", avatar=LOGO_IMG):
         full_res = ""; holder = st.empty()
         client = Groq(api_key=st.secrets["GROQ_API_KEY"])
@@ -157,8 +176,8 @@ if prompt := st.chat_input("Plantea tu duda..."):
             full_res += content; holder.markdown(full_res + "▌")
         holder.markdown(full_res)
     
-    # 5. Guardar respuesta de la IA
     st.session_state.messages.append({"role": "assistant", "content": full_res})
     guardar_mensaje_en_db(st.session_state.chat_id, "assistant", full_res)
 
-st.markdown(f'<div class="author-footer">By Tu Nombre</div>', unsafe_allow_html=True)
+# CRÉDITO FLOTANTE (ESTO SIEMPRE SE VERÁ)
+st.markdown('<div class="author-badge">de Joseph Torifio</div>', unsafe_allow_html=True)
