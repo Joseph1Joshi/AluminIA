@@ -76,26 +76,42 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 6. SISTEMA DE LOGIN ---
+# --- 6. SISTEMA DE LOGIN Y REGISTRO REPARADO ---
 if "user" not in st.session_state: st.session_state.user = None
 
 if st.session_state.user is None:
-    st.markdown('<div style="margin-top:12vh;"></div>', unsafe_allow_html=True)
+    st.markdown('<div style="margin-top:10vh;"></div>', unsafe_allow_html=True)
     st.markdown('<div class="aluminia-metal">ALUMINIA</div>', unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #10b981; margin-top: -15px; font-weight: 700;'>MADE BY TU NOMBRE</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #10b981; margin-top: -15px; font-weight: 700; letter-spacing: 2px;'>MADE BY TU NOMBRE</p>", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([0.1, 0.8, 0.1])
     with col2:
-        t1, t2 = st.tabs(["Entrar", "Unirse"])
+        t1, t2 = st.tabs(["Ingresar", "Unirse"])
+        
         with t1:
-            e = st.text_input("Email", key="login_email")
-            p = st.text_input("Password", type="password", key="login_pass")
+            e = st.text_input("Email", key="l_email")
+            p = st.text_input("Password", type="password", key="l_pass")
             if st.button("Entrar", use_container_width=True):
                 try:
                     res = supabase.auth.sign_in_with_password({"email": e, "password": p})
                     st.session_state.user = res.user
                     st.rerun()
-                except: st.error("Error de acceso")
+                except Exception as ex:
+                    st.error(f"Error de acceso: {ex}")
+                    
+        with t2:
+            st.markdown("<p style='font-size: 0.9rem; opacity: 0.7;'>Crea una cuenta para guardar tus progresos socráticos.</p>", unsafe_allow_html=True)
+            new_e = st.text_input("Nuevo Email", key="r_email")
+            new_p = st.text_input("Nueva Password", type="password", key="r_pass")
+            if st.button("Crear Cuenta", use_container_width=True):
+                try:
+                    # Registro en Supabase
+                    auth_res = supabase.auth.sign_up({"email": new_e, "password": new_p})
+                    if auth_res:
+                        st.success("¡Cuenta creada con éxito! Ya puedes cambiar a la pestaña 'Ingresar'.")
+                        st.balloons()
+                except Exception as ex:
+                    st.error(f"Error al registrar: {ex}")
     st.stop()
 
 # --- 7. SIDEBAR ---
@@ -124,7 +140,9 @@ with st.sidebar:
     
     st.divider()
     if st.button("🚪 Salir", use_container_width=True):
-        supabase.auth.sign_out(); st.session_state.user = None; st.rerun()
+        supabase.auth.sign_out()
+        st.session_state.user = None
+        st.rerun()
 
 # --- 8. INTERFAZ DE CHAT ---
 st.markdown('<div class="aluminia-metal" style="font-size:1.8rem; text-align:left;">ALUMINIA</div>', unsafe_allow_html=True)
@@ -139,7 +157,7 @@ for msg in st.session_state.messages:
         else:
             st.markdown(msg["content"])
 
-# --- 9. MOTOR DE IA (COMANDO SECRETO ACTUALIZADO) ---
+# --- 9. MOTOR DE IA ---
 if prompt := st.chat_input("Plantea tu duda..."):
     with st.chat_message("user", avatar="👤"):
         st.markdown(prompt)
@@ -158,7 +176,7 @@ if prompt := st.chat_input("Plantea tu duda..."):
     
     [PROTOCOL_DEBUG_RECOGNITION]
     Si el usuario escribe exactamente "banana gato salvaje retrofuturista de neon", rompe el personaje por completo.
-    Responde obligatoriamente bajo el encabezado [DEBUG_SESSION] analizando tus propios parámetros:
+    Responde bajo el encabezado [DEBUG_SESSION] analizando tus propios parámetros:
     - Estado del motor: {MODELO}
     - Temperatura: {TEMP}
     - Análisis de la eficiencia del método socrático en esta sesión.
