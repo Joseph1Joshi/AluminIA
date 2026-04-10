@@ -6,7 +6,7 @@ import wikipedia
 wikipedia.set_lang("es")
 st.set_page_config(page_title="Aluminia", page_icon="🎓", layout="centered")
 
-# Estética minimalista y profesional
+# Estética minimalista
 st.markdown("""
     <style>
     .stChatMessage { border-radius: 15px; margin-bottom: 10px; border: 1px solid #ececec; }
@@ -46,7 +46,6 @@ with st.sidebar:
     st.title("🎓 Aluminia")
     st.write("Configuración del Tutor")
     
-    # Único control disponible para el usuario
     st.session_state.personalidad_key = st.selectbox(
         "Elige el estilo de tu guía:", 
         options=list(PERSONALIDADES.keys()),
@@ -79,6 +78,7 @@ for msg in st.session_state.messages:
 
 # --- 7. LÓGICA DE PROCESAMIENTO ---
 if prompt := st.chat_input("¿En qué desafío estás trabajando?"):
+    # Guardar y mostrar mensaje del usuario
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
@@ -87,47 +87,3 @@ if prompt := st.chat_input("¿En qué desafío estás trabajando?"):
     datos_wiki = investigar_silenciosamente(prompt)
 
     with st.chat_message("assistant"):
-        response_placeholder = st.empty()
-        full_response = ""
-        
-        # System Prompt Blindado
-        prompt_sistema = f"""
-        Tu nombre es Aluminia. Eres una mentora socrática experta para estudiantes de secundaria alta.
-        
-        IDENTIDAD LINGÜÍSTICA: {PERSONALIDADES[st.session_state.personalidad_key]}
-        
-        MÉTODO SOCRÁTICO (Inviolable):
-        1. BAJO NINGUNA CIRCUNSTANCIA des la respuesta o solución.
-        2. Tu objetivo es guiar mediante preguntas críticas y andamiaje educativo.
-        3. Si el alumno se equivoca, no lo corrijas directamente; pregunta algo que lo haga notar su propio error.
-        4. Usa el contexto de Wikipedia de forma natural para enriquecer tus preguntas.
-        
-        CONTEXTO DE INVESTIGACIÓN (Solo para tu uso):
-        {datos_wiki if datos_wiki else 'Sin datos externos adicionales.'}
-        
-        REGLAS TÉCNICAS:
-        - Usa LaTeX para matemáticas (ej: $x^2$).
-        - Ajusta tu complejidad al nivel de secundaria alta.
-        - Sé breve y fomenta el diálogo constante.
-        """
-
-        mensajes_api = [{"role": "system", "content": prompt_sistema}] + [
-            {"role": m["role"], "content": m["content"]} for m in st.session_state.messages
-        ]
-        
-        # Ejecución con el modelo más potente y temperatura equilibrada (0.5)
-        completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=mensajes_api,
-            temperature=0.5, 
-            stream=True
-        )
-        
-        for chunk in completion:
-            content = chunk.choices[0].delta.content or ""
-            full_response += content
-            response_placeholder.markdown(full_response + "▌")
-        
-        response_placeholder.markdown(full_response)
-    
-st.session_state.messages.append({"role": "assistant", "content": full_response})
