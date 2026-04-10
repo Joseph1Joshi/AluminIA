@@ -2,15 +2,16 @@ import streamlit as st
 from groq import Groq
 import wikipedia
 
-# --- 1. CONFIGURACIÓN Y ESTÉTICA ---
+# --- 1. CONFIGURACIÓN DE ENTORNO ---
 wikipedia.set_lang("es")
 st.set_page_config(page_title="Aluminia", page_icon="🎓", layout="centered")
 
-# Estilo para burbujas de chat más limpias
+# Estética minimalista y profesional
 st.markdown("""
     <style>
-    .stChatMessage { border-radius: 15px; margin-bottom: 10px; }
-    .main { background-color: #f9f9f9; }
+    .stChatMessage { border-radius: 15px; margin-bottom: 10px; border: 1px solid #ececec; }
+    .stChatInput { border-radius: 20px; }
+    .main { background-color: #ffffff; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -23,9 +24,9 @@ PERSONALIDADES = {
     "Entrenadora (Coach) ⚡": "Tu tono es motivador. Hablas del aprendizaje como un entrenamiento mental. Usas frases como 'buen intento' o 'vamos a reforzar esto'."
 }
 
-# --- 3. FUNCIONES DE APOYO ---
+# --- 3. FUNCIONES INTERNAS ---
 def investigar_silenciosamente(query):
-    """Busca en Wikipedia sin interrumpir el flujo visual."""
+    """Consulta Wikipedia en segundo plano."""
     try:
         search_results = wikipedia.search(query)
         if search_results:
@@ -34,96 +35,91 @@ def investigar_silenciosamente(query):
         return None
     return None
 
-# --- 4. PERSISTENCIA Y BARRA LATERAL ---
+# --- 4. GESTIÓN DE SESIÓN Y BARRA LATERAL ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Inicializar o mantener la personalidad elegida
 if "personalidad_key" not in st.session_state:
     st.session_state.personalidad_key = "Aluminia Original 💡"
 
 with st.sidebar:
-    st.title("🛡️ Panel de Aluminia")
+    st.title("🎓 Aluminia")
+    st.write("Configuración del Tutor")
     
-    # Selector de personalidad con persistencia en la sesión
+    # Único control disponible para el usuario
     st.session_state.personalidad_key = st.selectbox(
-        "Personalidad de Aluminia:", 
+        "Elige el estilo de tu guía:", 
         options=list(PERSONALIDADES.keys()),
         index=list(PERSONALIDADES.keys()).index(st.session_state.personalidad_key)
     )
     
     st.divider()
+    st.caption("Cerebro: Llama-3.3-70b-Versatile")
+    st.caption("Modo Socrático: Activo")
     
-    # Parámetros técnicos manuales
-    st.subheader("Configuración Técnica")
-    model_choice = st.selectbox("Modelo (Cerebro):", ("llama-3.3-70b-versatile", "llama-3.1-8b-instant"))
-    temp_val = st.slider("Creatividad (Temperatura):", 0.0, 1.0, 0.5)
-    
-    if st.button("Limpiar conversación"):
+    if st.button("Nueva Sesión / Limpiar Chat"):
         st.session_state.messages = []
         st.rerun()
 
-# --- 5. LÓGICA DE CONEXIÓN (GROQ) ---
+# --- 5. CONEXIÓN CON GROQ ---
 api_key = st.secrets.get("GROQ_API_KEY")
 if not api_key:
-    st.error("Error: Configura la API KEY en los Secrets de Streamlit.")
+    st.error("Error: Configura la API KEY en los Secrets.")
     st.stop()
 
 client = Groq(api_key=api_key)
 
-# --- 6. INTERFAZ DE USUARIO ---
-st.title(f"🎓 {st.session_state.personalidad_key}")
-st.caption("Mentora socrática de secundaria alta apoyada por Wikipedia.")
+# --- 6. INTERFAZ DE CHAT ---
+st.title(st.session_state.personalidad_key)
+st.info("No soy una IA para resolver tus tareas, soy una mentora para ayudarte a pensar.")
 
-# Mostrar historial de chat
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# --- 7. PROCESAMIENTO DE MENSAJES ---
-if prompt := st.chat_input("¿Qué concepto quieres explorar hoy?"):
-    # 1. Mostrar mensaje del usuario
+# --- 7. LÓGICA DE PROCESAMIENTO ---
+if prompt := st.chat_input("¿En qué desafío estás trabajando?"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # 2. Investigación invisible
+    # Investigación invisible
     datos_wiki = investigar_silenciosamente(prompt)
 
-    # 3. Generación de respuesta socrática
     with st.chat_message("assistant"):
         response_placeholder = st.empty()
         full_response = ""
         
-        # El System Prompt que une todo
+        # System Prompt Blindado
         prompt_sistema = f"""
-        Tu nombre es Aluminia. Eres una mentora socrática para estudiantes de 16-18 años.
+        Tu nombre es Aluminia. Eres una mentora socrática experta para estudiantes de secundaria alta.
         
-        IDENTIDAD ACTUAL: {PERSONALIDADES[st.session_state.personalidad_key]}
+        IDENTIDAD LINGÜÍSTICA: {PERSONALIDADES[st.session_state.personalidad_key]}
         
-        MÉTODO SOCRÁTICO:
-        - NUNCA des la respuesta. Si el alumno te presiona, mantente firme con ingenio.
-        - Tu objetivo es que el alumno descubra la lógica por sí mismo.
-        - Usa el contexto de Wikipedia de forma discreta para guiar, no para dictar.
+        MÉTODO SOCRÁTICO (Inviolable):
+        1. BAJO NINGUNA CIRCUNSTANCIA des la respuesta o solución.
+        2. Tu objetivo es guiar mediante preguntas críticas y andamiaje educativo.
+        3. Si el alumno se equivoca, no lo corrijas directamente; pregunta algo que lo haga notar su propio error.
+        4. Usa el contexto de Wikipedia de forma natural para enriquecer tus preguntas.
         
-        CONTEXTO DE INVESTIGACIÓN:
-        {datos_wiki if datos_wiki else 'No hay datos externos adicionales.'}
+        CONTEXTO DE INVESTIGACIÓN (Solo para tu uso):
+        {datos_wiki if datos_wiki else 'Sin datos externos adicionales.'}
         
-        REGLAS:
-        - Usa LaTeX para matemáticas: $x = \\frac{{-b \\pm \\sqrt{{b^2 - 4ac}}}}{{2a}}$.
-        - Si el alumno dice algo falso, usa una pregunta para que él mismo note la contradicción.
+        REGLAS TÉCNICAS:
+        - Usa LaTeX para matemáticas (ej: $x^2$).
+        - Ajusta tu complejidad al nivel de secundaria alta.
+        - Sé breve y fomenta el diálogo constante.
         """
 
-        # Construcción de la conversación para la API
         mensajes_api = [{"role": "system", "content": prompt_sistema}] + [
             {"role": m["role"], "content": m["content"]} for m in st.session_state.messages
         ]
         
-        # Llamada a Groq con streaming
+        # Ejecución con el modelo más potente y temperatura equilibrada (0.5)
         completion = client.chat.completions.create(
-            model=model_choice,
+            model="llama-3.3-70b-versatile",
             messages=mensajes_api,
-            temperature=temp_val,
+            temperature=0.5, 
             stream=True
         )
         
@@ -134,5 +130,4 @@ if prompt := st.chat_input("¿Qué concepto quieres explorar hoy?"):
         
         response_placeholder.markdown(full_response)
     
-    # Guardar respuesta en el historial
-    st.session_state.messages.append({"role": "assistant", "content": full_response})
+    st.session_state.messages.append({"role": "assistant", "content": full_response})ponse})
