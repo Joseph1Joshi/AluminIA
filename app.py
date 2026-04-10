@@ -25,10 +25,13 @@ supabase = conectar_supabase()
 # --- FUNCIONES DE PERSISTENCIA ---
 
 def crear_chat_en_db(titulo="Nueva Consulta"):
-    """Crea un registro en la tabla 'chats' y devuelve su ID"""
-    res = supabase.table("chats").insert({"titulo": titulo}).execute()
-    return res.data[0]['id']
-
+    try:
+        # Nota: Ya no enviamos user_id, solo el título
+        res = supabase.table("chats").insert({"titulo": titulo}).execute()
+        return res.data[0]['id']
+    except Exception as e:
+        st.error(f"Error al crear chat: {e}")
+        return None
 def guardar_mensaje_en_db(chat_id, role, content):
     """Guarda cada mensaje vinculado a un chat_id"""
     if chat_id:
