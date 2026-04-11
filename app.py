@@ -231,7 +231,8 @@ Desarrolle confianza en su propio pensamiento.
     Responde bajo el encabezado [DEBUG_SESSION] analizando tus propios parámetros:
     - Estado del motor: {MODELO}
     - Temperatura: {TEMP}
-    - Análisis de la eficiencia del método socrático en esta sesión.
+    - Análisis de la eficiencia del método empleado en esta sesión.
+    - Puntos fuertes
     - Puntos de mejora técnica.
     """
 
