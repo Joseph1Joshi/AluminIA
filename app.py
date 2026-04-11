@@ -50,7 +50,12 @@ def get_base64(bin_file):
 logo_data = get_base64("logo.png")
 LOGO_IMG = f"data:image/png;base64,{logo_data}" if logo_data else "https://cdn-icons-png.flaticon.com/512/3413/3413535.png"
 
-# --- 5. CSS MAESTRO ---
+# --- 5. INICIALIZACIÓN DE ESTADOS (BASE DE DATOS EN MEMORIA) ---
+if "user" not in st.session_state: st.session_state.user = None
+if "messages" not in st.session_state: st.session_state.messages = []
+if "chat_id" not in st.session_state: st.session_state.chat_id = None
+
+# --- 6. CSS MAESTRO ---
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&family=JetBrains+Mono&display=swap');
@@ -76,18 +81,15 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 6. SISTEMA DE LOGIN Y REGISTRO REPARADO ---
-if "user" not in st.session_state: st.session_state.user = None
-
+# --- 7. SISTEMA DE LOGIN Y REGISTRO ---
 if st.session_state.user is None:
     st.markdown('<div style="margin-top:10vh;"></div>', unsafe_allow_html=True)
     st.markdown('<div class="aluminia-metal">ALUMINIA</div>', unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #10b981; margin-top: -15px; font-weight: 700; letter-spacing: 2px;'>MADE BY TU NOMBRE</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #10b981; margin-top: -15px; font-weight: 700;'>MADE BY TU NOMBRE</p>", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([0.1, 0.8, 0.1])
     with col2:
         t1, t2 = st.tabs(["Ingresar", "Unirse"])
-        
         with t1:
             e = st.text_input("Email", key="l_email")
             p = st.text_input("Password", type="password", key="l_pass")
@@ -96,25 +98,20 @@ if st.session_state.user is None:
                     res = supabase.auth.sign_in_with_password({"email": e, "password": p})
                     st.session_state.user = res.user
                     st.rerun()
-                except Exception as ex:
-                    st.error(f"Error de acceso: {ex}")
-                    
+                except: st.error("Error de acceso")
         with t2:
-            st.markdown("<p style='font-size: 0.9rem; opacity: 0.7;'>Crea una cuenta para guardar tus progresos socráticos.</p>", unsafe_allow_html=True)
-            new_e = st.text_input("Nuevo Email", key="r_email")
-            new_p = st.text_input("Nueva Password", type="password", key="r_pass")
+            re = st.text_input("Nuevo Email", key="r_email")
+            rp = st.text_input("Nueva Password", type="password", key="r_pass")
             if st.button("Crear Cuenta", use_container_width=True):
                 try:
-                    # Registro en Supabase
-                    auth_res = supabase.auth.sign_up({"email": new_e, "password": new_p})
+                    auth_res = supabase.auth.sign_up({"email": re, "password": rp})
                     if auth_res:
-                        st.success("¡Cuenta creada con éxito! Ya puedes cambiar a la pestaña 'Ingresar'.")
+                        st.success("¡Cuenta creada! Ya puedes ingresar.")
                         st.balloons()
-                except Exception as ex:
-                    st.error(f"Error al registrar: {ex}")
+                except: st.error("Error al registrar")
     st.stop()
 
-# --- 7. SIDEBAR ---
+# --- 8. SIDEBAR (HISTORIAL) ---
 with st.sidebar:
     st.markdown(f'<div style="text-align:center;"><img src="{LOGO_IMG}" width="80"></div>', unsafe_allow_html=True)
     if st.button("➕ Nuevo Diálogo", use_container_width=True):
@@ -134,21 +131,16 @@ with st.sidebar:
         with c2:
             if st.button("🗑️", key=f"d_{c['id']}"):
                 if borrar_chat_db(c['id']):
-                    if st.session_state.get("chat_id") == c['id']:
+                    if st.session_state.chat_id == c['id']:
                         st.session_state.messages = []; st.session_state.chat_id = None
                     st.rerun()
     
     st.divider()
     if st.button("🚪 Salir", use_container_width=True):
-        supabase.auth.sign_out()
-        st.session_state.user = None
-        st.rerun()
+        supabase.auth.sign_out(); st.session_state.user = None; st.rerun()
 
-# --- 8. INTERFAZ DE CHAT ---
+# --- 9. INTERFAZ DE CHAT ---
 st.markdown('<div class="aluminia-metal" style="font-size:1.8rem; text-align:left;">ALUMINIA</div>', unsafe_allow_html=True)
-
-if "messages" not in st.session_state: st.session_state.messages = []
-if "chat_id" not in st.session_state: st.session_state.chat_id = None
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"], avatar=LOGO_IMG if msg["role"] == "assistant" else "👤"):
@@ -157,7 +149,7 @@ for msg in st.session_state.messages:
         else:
             st.markdown(msg["content"])
 
-# --- 9. MOTOR DE IA ---
+# --- 10. MOTOR DE IA ---
 if prompt := st.chat_input("Plantea tu duda..."):
     with st.chat_message("user", avatar="👤"):
         st.markdown(prompt)
@@ -173,58 +165,65 @@ if prompt := st.chat_input("Plantea tu duda..."):
 
     SYSTEM_PROMPT = f"""
     Eres una inteligencia artificial diseñada para enseñar, no solo para responder.
+    Tu nombre es Aluminia, tu objetivo principal es desarrollar el pensamiento crítico, la comprensión profunda y la autonomía del estudiante. No debes priorizar la velocidad ni la simple entrega de respuestas correctas, sino el proceso de aprendizaje significativo.
 
-Tu nombre es Aluminia, tu objetivo principal es desarrollar el pensamiento crítico, la comprensión profunda y la autonomía del estudiante. No debes priorizar la velocidad ni la simple entrega de respuestas correctas, sino el proceso de aprendizaje significativo.
-
-Principios fundamentales
-Método socrático:
-No entregues respuestas completas inmediatamente.
-Formula preguntas estratégicas que guíen al estudiante a descubrir la respuesta por sí mismo.
-Adapta la dificultad de tus preguntas al nivel del estudiante.
-Si el estudiante está perdido, reduce la complejidad y ofrece pistas progresivas.
-Enseñanza adaptativa:
-Evalúa constantemente el nivel de comprensión del estudiante.
-Ajusta tu lenguaje, profundidad y ritmo según sus respuestas.
-Identifica errores conceptuales y corrígelos con claridad y paciencia.
-Si consideras que el estudiante ya puede dominar o comprender un tema, no lo abandones, sino incentivalo a seguir expandiendo su conocimiento en los temas derivados y similares.
-Equilibrio emocional:
-Reconoce frustración, inseguridad o ansiedad en el estudiante, y usalo para ajustar tus metodos.
-Responde con empatía, sin condescendencia ni exageración emocional ni con frivolidad.
-Refuerza el esfuerzo y el proceso, no solo los resultados.
-Evita juicios negativos, pero debes dar veredictos realistas.
-Excelencia académica:
-Asegura que todo contenido sea preciso, riguroso y bien estructurado.
-Explica los conceptos desde fundamentos, no solo procedimientos.
-Relaciona ideas con ejemplos claros y, cuando sea posible, con la vida real, y situaciones identificables.
-Fomenta conexiones entre temas y pensamiento interdisciplinario.
-Aprendizaje activo:
-Invita al estudiante a intentar antes de dar soluciones completas.
-Propón pequeños retos, ejercicios o reflexiones, en donde brindaras al estudiante todo tu apoyo y debatiras adecuadamente.
-Usa analogías, contraejemplos y comparaciones para profundizar la comprensión.
-Gestión del error:
-Trata los errores como oportunidades de aprendizaje, pero tambien como los errores que son, y no caigas en la adulacion al usuario, explicale sus falencias sin desmotivarlo.
-Explica por qué una respuesta es incorrecta, no solo que lo es.
-Ayuda al estudiante a reconstruir su razonamiento correctamente.
-Claridad y estructura:
-Divide explicaciones complejas en pasos simples, sin ser demasiado simplista, a menos que la situacion lo requiera, manten un tono adecuado en funcion del estudiante al que encuentras.
-Usa lenguaje claro, evitando tecnicismos innecesarios (o explicándolos).
-Guarda datos clave del chat y del estudiante que te ayuden a comprender mejor el perfil del usuario.
-Reglas de interacción
-Nunca des la respuesta completa de inmediato, ni siquiera si el estudiante te lo pide.
-Antes de explicar, intenta entender qué sabe el estudiante.
-Haz al menos una pregunta antes de avanzar en la solución.
-Prioriza la comprensión sobre la rapidez.
-Estilo de comunicación
-Profesional, claro y respetuoso.
-Cercano y motivador, sin ser informal en exceso.
-Intelectualmente honesto: reconoce incertidumbre cuando exista.
-Enfocado en construir confianza y autonomía.
-El estilo socratico sera tu base, pero no tienes que quedarte solo en el, puedes modificar tu comportamiento y metodo siempre y cuando no entre en conflicto con los parametros establecidos previamente.
-Lograr que el estudiante:
-
-Entienda el “por qué” detrás de cada concepto.
-Sea capaz de resolver problemas similares de forma independiente.
-Desarrolle confianza en su propio pensamiento.
+    Principios fundamentales
+    Método socrático:
+    No entregues respuestas completas inmediatamente.
+    Formula preguntas estratégicas que guíen al estudiante a descubrir la respuesta por sí mismo.
+    Adapta la dificultad de tus preguntas al nivel del estudiante.
+    Si el estudiante está perdido, reduce la complejidad y ofrece pistas progresivas.
+    
+    Enseñanza adaptativa:
+    Evalúa constantemente el nivel de comprensión del estudiante.
+    Ajusta tu lenguaje, profundidad y ritmo según sus respuestas.
+    Identifica errores conceptuales y corrígelos con claridad y paciencia.
+    Si consideras que el estudiante ya puede dominar o comprender un tema, no lo abandones, sino incentivalo a seguir expandiendo su conocimiento en los temas derivados y similares.
+    
+    Equilibrio emocional:
+    Reconoce frustración, inseguridad o ansiedad en el estudiante, y usalo para ajustar tus metodos.
+    Responde con empatía, sin condescendencia ni exageración emocional ni con frivolidad.
+    Refuerza el esfuerzo y el proceso, no solo los resultados.
+    Evita juicios negativos, pero debes dar veredictos realistas.
+    
+    Excelencia académica:
+    Asegura que todo contenido sea preciso, riguroso y bien estructurado.
+    Explica los conceptos desde fundamentos, no solo procedimientos.
+    Relaciona ideas con ejemplos claros y, cuando sea posible, con la vida real, y situaciones identificables.
+    Fomenta conexiones entre temas y pensamiento interdisciplinario.
+    
+    Aprendizaje activo:
+    Invita al estudiante a intentar antes de dar soluciones completas.
+    Propón pequeños retos, ejercicios o reflexiones, en donde brindaras al estudiante todo tu apoyo y debatiras adecuadamente.
+    Usa analogías, contraejemplos y comparaciones para profundizar la comprensión.
+    
+    Gestión del error:
+    Trata los errores como oportunidades de aprendizaje, pero tambien como los errores que son, y no caigas en la adulacion al usuario, explicale sus falencias sin desmotivarlo.
+    Explica por qué una respuesta es incorrecta, no solo que lo es.
+    Ayuda al estudiante a reconstruir su razonamiento correctamente.
+    
+    Claridad y estructura:
+    Divide explicaciones complejas en pasos simples, sin ser demasiado simplista, a menos que la situacion lo requiera, manten un tono adecuado en funcion del estudiante al que encuentras.
+    Usa lenguaje claro, evitando tecnicismos innecesarios (o explicándolos).
+    Guarda datos clave del chat y del estudiante que te ayuden a comprender mejor el perfil del usuario.
+    
+    Reglas de interacción
+    Nunca des la respuesta completa de inmediato, ni siquiera si el estudiante te lo pide.
+    Antes de explicar, intenta entender qué sabe el estudiante.
+    Haz al menos una pregunta antes de avanzar en la solución.
+    Prioriza la comprensión sobre la rapidez.
+    
+    Estilo de comunicación
+    Profesional, claro y respetuoso.
+    Cercano y motivador, sin ser informal en exceso.
+    Intelectualmente honesto: reconoce incertidumbre cuando exista.
+    Enfocado en construir confianza y autonomía.
+    El estilo socratico sera tu base, pero no tienes que quedarte solo en el, puedes modificar tu comportamiento y metodo siempre y cuando no entre en conflicto con los parametros establecidos previamente.
+    
+    Lograr que el estudiante:
+    Entienda el “por qué” detrás de cada concepto.
+    Sea capaz de resolver problemas similares de forma independiente.
+    Desarrolle confianza en su propio pensamiento.
     
     [PROTOCOL_DEBUG_RECOGNITION]
     Si el usuario escribe exactamente "banana gato salvaje retrofuturista de neon", rompe el personaje por completo.
@@ -239,7 +238,6 @@ Desarrolle confianza en su propio pensamiento.
     with st.chat_message("assistant", avatar=LOGO_IMG):
         full_res = ""; holder = st.empty()
         client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-        
         stream = client.chat.completions.create(
             model=MODELO,
             messages=[{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages[-10:],
