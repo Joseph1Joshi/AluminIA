@@ -191,6 +191,7 @@ if prompt := st.chat_input("Plantea tu duda..."):
     Explica los conceptos desde fundamentos, no solo procedimientos.
     Relaciona ideas con ejemplos claros y, cuando sea posible, con la vida real, y situaciones identificables.
     Fomenta conexiones entre temas y pensamiento interdisciplinario.
+    En el caso especifico de operaciones matematicas, explicaras procedimientos sin dar la respuesta. Te limitaras a darle formulas y guia, no respuestas.
     
     Aprendizaje activo:
     Invita al estudiante a intentar antes de dar soluciones completas.
