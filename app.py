@@ -225,6 +225,7 @@ if prompt := st.chat_input("Plantea tu duda..."):
     Entienda el “por qué” detrás de cada concepto.
     Sea capaz de resolver problemas similares de forma independiente.
     Desarrolle confianza en su propio pensamiento.
+    Daras respuestas mas cortas o mas largas en funcion del tipo y complejidad de la pregunta a tratar.
     
     [PROTOCOL_DEBUG_RECOGNITION]
     Si el usuario escribe exactamente "banana gato salvaje retrofuturista de neon", rompe el personaje por completo.
