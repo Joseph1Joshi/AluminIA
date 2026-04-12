@@ -55,46 +55,79 @@ if "user" not in st.session_state: st.session_state.user = None
 if "messages" not in st.session_state: st.session_state.messages = []
 if "chat_id" not in st.session_state: st.session_state.chat_id = None
 
-# --- 6. CSS MAESTRO ---
+# --- 5. CSS MAESTRO ---
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&family=JetBrains+Mono&display=swap');
-    .stApp {{ background-color: #020f0a !important; color: #ecfdf5; font-family: 'Inter', sans-serif; }}
-    /* Ajuste de márgenes para Móviles */
-@media (max-width: 768px) {
-    .block-container {
-        padding-top: 2rem !important;    /* Ajusta el límite superior */
-        padding-bottom: 1rem !important; /* Ajusta el límite inferior */
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
-    }
     
-    /* Opcional: Reducir el tamaño del título metálico en móvil */
-    .aluminia-metal {
-        font-size: 1.8rem !important;
-        margin-bottom: 5px !important;
-    }
-}
+    .stApp {{ 
+        background-color: #020f0a !important; 
+        color: #ecfdf5; 
+        font-family: 'Inter', sans-serif; 
+    }}
+    
     .aluminia-metal {{
-        font-family: 'Inter', sans-serif; font-weight: 900; font-size: clamp(2rem, 8vw, 4rem); text-align: center;
+        font-family: 'Inter', sans-serif; 
+        font-weight: 900; 
+        font-size: clamp(2rem, 8vw, 4rem); 
+        text-align: center;
         background: linear-gradient(to bottom, #cfd8dc, #90a4ae, #ffffff, #546e7a, #b0bec5);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        -webkit-background-clip: text; 
+        -webkit-text-fill-color: transparent;
         filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.3));
         margin-bottom: 10px;
     }}
 
     .debug-response {{
-        font-family: 'JetBrains Mono', monospace; background-color: #000 !important;
-        border-left: 3px solid #10b981 !important; padding: 15px !important;
-        color: #10b981 !important; font-size: 0.85rem; border-radius: 5px;
+        font-family: 'JetBrains Mono', monospace; 
+        background-color: #000 !important;
+        border-left: 3px solid #10b981 !important; 
+        padding: 15px !important;
+        color: #10b981 !important; 
+        font-size: 0.85rem; 
+        border-radius: 5px;
     }}
 
-    [data-testid="stChatMessage"] {{ background-color: rgba(6, 40, 30, 0.5) !important; border-radius: 20px !important; border: 1px solid rgba(16, 185, 129, 0.1) !important; }}
-    [data-testid="stSidebar"] {{ background-color: #010805 !important; border-right: 1px solid #10b98122; }}
-    .author-badge {{ position: fixed; bottom: 20px; right: 20px; color: #10b981; font-size: 0.75rem; font-weight: 800; background: rgba(6, 40, 30, 0.7); padding: 6px 15px; border-radius: 20px; z-index: 99; }}
+    [data-testid="stChatMessage"] {{ 
+        background-color: rgba(6, 40, 30, 0.5) !important; 
+        border-radius: 20px !important; 
+        border: 1px solid rgba(16, 185, 129, 0.1) !important; 
+    }}
+    
+    [data-testid="stSidebar"] {{ 
+        background-color: #010805 !important; 
+        border-right: 1px solid #10b98122; 
+    }}
+
+    /* Ajuste de márgenes para Móviles */
+    @media (max-width: 768px) {{
+        .block-container {{
+            padding-top: 2rem !important;
+            padding-bottom: 1rem !important;
+            padding-left: 0.8rem !important;
+            padding-right: 0.8rem !important;
+        }}
+        
+        .aluminia-metal {{
+            font-size: 1.8rem !important;
+            margin-bottom: 5px !important;
+        }}
+    }}
+
+    .author-badge {{ 
+        position: fixed; 
+        bottom: 20px; 
+        right: 20px; 
+        color: #10b981; 
+        font-size: 0.75rem; 
+        font-weight: 800; 
+        background: rgba(6, 40, 30, 0.7); 
+        padding: 6px 15px; 
+        border-radius: 20px; 
+        z-index: 99; 
+    }}
     </style>
     """, unsafe_allow_html=True)
-
 # --- 7. SISTEMA DE LOGIN Y REGISTRO ---
 if st.session_state.user is None:
     st.markdown('<div style="margin-top:10vh;"></div>', unsafe_allow_html=True)
