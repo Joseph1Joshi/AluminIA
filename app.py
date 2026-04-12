@@ -60,7 +60,21 @@ st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&family=JetBrains+Mono&display=swap');
     .stApp {{ background-color: #020f0a !important; color: #ecfdf5; font-family: 'Inter', sans-serif; }}
+    /* Ajuste de márgenes para Móviles */
+@media (max-width: 768px) {
+    .block-container {
+        padding-top: 2rem !important;    /* Ajusta el límite superior */
+        padding-bottom: 1rem !important; /* Ajusta el límite inferior */
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
     
+    /* Opcional: Reducir el tamaño del título metálico en móvil */
+    .aluminia-metal {
+        font-size: 1.8rem !important;
+        margin-bottom: 5px !important;
+    }
+}
     .aluminia-metal {{
         font-family: 'Inter', sans-serif; font-weight: 900; font-size: clamp(2rem, 8vw, 4rem); text-align: center;
         background: linear-gradient(to bottom, #cfd8dc, #90a4ae, #ffffff, #546e7a, #b0bec5);
