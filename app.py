@@ -60,10 +60,21 @@ st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&family=JetBrains+Mono&display=swap');
     
+    /* BLOQUE DE CONTENCIÓN TOTAL (OVERSCROLL FIX) */
+    html, body, [data-testid="stAppViewContainer"], [data-testid="stMainViewContainer"] {{
+        background-color: #020f0a !important;
+        color: #ecfdf5;
+        font-family: 'Inter', sans-serif;
+        overscroll-behavior: none !important; /* Detiene el rebote elástico */
+    }}
+
+    /* HEADER TRANSPARENTE */
+    header[data-testid="stHeader"] {{
+        background-color: rgba(0,0,0,0) !important;
+    }}
+
     .stApp {{ 
         background-color: #020f0a !important; 
-        color: #ecfdf5; 
-        font-family: 'Inter', sans-serif; 
     }}
     
     .aluminia-metal {{
