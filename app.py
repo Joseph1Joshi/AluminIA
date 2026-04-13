@@ -41,15 +41,27 @@ def borrar_chat_db(chat_id):
         return True
     except: return False
 
-# --- 4. ASSETS ---
+
+# --- 4. ASSETS (NUEVO: INTEGRACIÓN DE TU LOGO) ---
 def get_base64(bin_file):
     try:
         with open(bin_file, 'rb') as f: return base64.b64encode(f.read()).decode()
-    except: return None
+    except FileNotFoundError:
+        # Si no encuentra el archivo, no se rompe la app, usa un fallback
+        return None 
 
-logo_data = get_base64("logo.png")
-LOGO_IMG = f"data:image/png;base64,{logo_data}" if logo_data else "https://cdn-icons-png.flaticon.com/512/3413/3413535.png"
+# REEMPLAZA "logo.png" CON EL NOMBRE REAL DE TU ARCHIVO (ej: "mi_logo_final.png")
+# El archivo debe estar en la misma carpeta que app.py
+nombre_archivo_logo = "logo.png" 
 
+logo_data = get_base64(nombre_archivo_logo)
+
+# Si hay datos, crea la URI Base64; si no, usa el icono de fallback
+if logo_data:
+    # Si tu logo es JPG, cambia 'png' por 'jpeg'
+    LOGO_IMG = f"data:image/png;base64,{logo_data}" 
+else:
+    LOGO_IMG = "https://cdn-icons-png.flaticon.com/512/3413/3413535.png" # Fallback
 # --- 5. INICIALIZACIÓN DE ESTADOS (BASE DE DATOS EN MEMORIA) ---
 if "user" not in st.session_state: st.session_state.user = None
 if "messages" not in st.session_state: st.session_state.messages = []
