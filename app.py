@@ -143,7 +143,7 @@ st.markdown(f"""
 if st.session_state.user is None:
     st.markdown('<div style="margin-top:10vh;"></div>', unsafe_allow_html=True)
     st.markdown('<div class="aluminia-metal">ALUMINIA</div>', unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #10b981; margin-top: -15px; font-weight: 700;'>MADE BY TU NOMBRE</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #10b981; margin-top: -15px; font-weight: 700;'>De Joseph Torifio</p>", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([0.1, 0.8, 0.1])
     with col2:
@@ -156,7 +156,7 @@ if st.session_state.user is None:
                     res = supabase.auth.sign_in_with_password({"email": e, "password": p})
                     st.session_state.user = res.user
                     st.rerun()
-                except: st.error("Error de acceso")
+                except: st.error("Intenta Nuevamente")
         with t2:
             re = st.text_input("Nuevo Email", key="r_email")
             rp = st.text_input("Nueva Password", type="password", key="r_pass")
