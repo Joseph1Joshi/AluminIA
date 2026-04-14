@@ -221,32 +221,44 @@ if st.session_state.user is None:
                 except: st.error("Error al registrar")
     st.stop()
 
-# --- 8. SIDEBAR (HISTORIAL) ---
+# --- 8. SIDEBAR (REDiseño VIBRANTE) ---
 with st.sidebar:
-    st.markdown(f'<div style="text-align:center;"><img src="{LOGO_IMG}" width="80"></div>', unsafe_allow_html=True)
-    if st.button("➕ Nuevo Diálogo", use_container_width=True):
+    # Logo con resplandor intenso
+    st.markdown(f"""
+        <div style="text-align:center; padding: 20px 0;">
+            <img src="{LOGO_IMG}" width="100" style="filter: drop-shadow(0 0 20px rgba(16, 185, 129, 0.5));">
+            <p style="color: #10b981; font-family: 'JetBrains Mono'; font-size: 0.6rem; margin-top: 10px; opacity: 0.6;">SYSTEM VERSION 2.1.0</p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    if st.button("➕ NUEVA SESIÓN", use_container_width=True):
         st.session_state.messages = []; st.session_state.chat_id = None; st.rerun()
     
-    st.divider()
-    st.markdown("### 📜 Historial")
+    st.markdown("<br><h3>Historial de Enlaces</h3>", unsafe_allow_html=True)
+    
+    # Contenedor de chats
     chats = obtener_historial_chats(st.session_state.user.id)
     for c in chats:
-        c1, c2 = st.columns([0.8, 0.2])
-        with c1:
-            if st.button(f"💬 {c['titulo'][:15]}", key=f"c_{c['id']}", use_container_width=True):
+        cols = st.columns([0.85, 0.15])
+        with cols[0]:
+            # El botón de chat ahora tiene el efecto de desplazamiento (hover) definido en CSS
+            if st.button(f"⚡ {c['titulo'][:18]}...", key=f"c_{c['id']}", use_container_width=True):
                 st.session_state.chat_id = c['id']
                 m_db = obtener_mensajes_del_chat(c['id'])
                 st.session_state.messages = [{"role": m["role"], "content": m["content"]} for m in m_db]
                 st.rerun()
-        with c2:
-            if st.button("🗑️", key=f"d_{c['id']}"):
+        with cols[1]:
+            # Botón de borrar minimalista
+            if st.button("×", key=f"d_{c['id']}", help="Eliminar registro"):
                 if borrar_chat_db(c['id']):
                     if st.session_state.chat_id == c['id']:
                         st.session_state.messages = []; st.session_state.chat_id = None
                     st.rerun()
     
+    # Pie de la Sidebar
+    st.markdown("<div style='flex-grow: 1;'></div>", unsafe_allow_html=True) # Espaciador
     st.divider()
-    if st.button("🚪 Salir", use_container_width=True):
+    if st.button("🔌 DESCONECTAR SISTEMA", use_container_width=True):
         supabase.auth.sign_out(); st.session_state.user = None; st.rerun()
 
 # --- 9. INTERFAZ DE CHAT ---
