@@ -10,8 +10,14 @@ def cargar_prompt(archivo):
     except FileNotFoundError:
         return "Eres un asistente útil." # Fallback por si el archivo se borra
 # --- 1. CONFIGURACIÓN ---
-st.set_page_config(page_title="Aluminia AI", page_icon="🎓", layout="wide", initial_sidebar_state="expanded")
 
+# Si tu logo es un archivo .png o .ico, puedes pasarlo directamente aquí
+st.set_page_config(
+    page_title="Aluminia", 
+    page_icon="logo.png", # <--- Aquí pones tu archivo
+    layout="wide", 
+    initial_sidebar_state="expanded"
+)
 # --- 2. CONEXIÓN SUPABASE ---
 @st.cache_resource
 def conectar_supabase():
