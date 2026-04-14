@@ -79,74 +79,100 @@ if "user" not in st.session_state: st.session_state.user = None
 if "messages" not in st.session_state: st.session_state.messages = []
 if "chat_id" not in st.session_state: st.session_state.chat_id = None
 
-# --- 5. CSS MAESTRO ---
+# --- 5. CSS MAESTRO (VERSION VIBRANTE & GLOW) ---
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&family=JetBrains+Mono&display=swap');
     
-    /* BLOQUE DE CONTENCIÓN TOTAL (OVERSCROLL FIX) */
+    /* 1. FONDO CON PROFUNDIDAD RADIAL */
     html, body, [data-testid="stAppViewContainer"], [data-testid="stMainViewContainer"] {{
-        background-color: #020f0a !important;
+        background: radial-gradient(circle at top center, #06281e 0%, #020f0a 100%) !important;
         color: #ecfdf5;
         font-family: 'Inter', sans-serif;
-        overscroll-behavior: none !important; /* Detiene el rebote elástico */
+        overscroll-behavior: none !important;
     }}
 
-    /* HEADER TRANSPARENTE */
+    /* 2. HEADER TOTALMENTE INVISIBLE */
     header[data-testid="stHeader"] {{
         background-color: rgba(0,0,0,0) !important;
     }}
 
-    .stApp {{ 
-        background-color: #020f0a !important; 
+    /* 3. TÍTULO METALIZADO CON PULSO DE NEÓN */
+    @keyframes pulse-glow {{
+        0% {{ filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.4)); }}
+        50% {{ filter: drop-shadow(0 0 25px rgba(16, 185, 129, 0.7)); }}
+        100% {{ filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.4)); }}
     }}
-    
+
     .aluminia-metal {{
         font-family: 'Inter', sans-serif; 
         font-weight: 900; 
-        font-size: clamp(2rem, 8vw, 4rem); 
+        font-size: clamp(2.5rem, 10vw, 4.5rem); 
         text-align: center;
         background: linear-gradient(to bottom, #cfd8dc, #90a4ae, #ffffff, #546e7a, #b0bec5);
         -webkit-background-clip: text; 
         -webkit-text-fill-color: transparent;
-        filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.3));
-        margin-bottom: 10px;
+        animation: pulse-glow 3s infinite ease-in-out;
+        margin-bottom: 15px;
+        letter-spacing: -2px;
     }}
 
-    .debug-response {{
-        font-family: 'JetBrains Mono', monospace; 
-        background-color: #000 !important;
-        border-left: 3px solid #10b981 !important; 
-        padding: 15px !important;
-        color: #10b981 !important; 
-        font-size: 0.85rem; 
-        border-radius: 5px;
-    }}
-
+    /* 4. BURBUJAS DE CHAT CON EFECTO CRISTAL (GLASSMORPHISM) */
     [data-testid="stChatMessage"] {{ 
-        background-color: rgba(6, 40, 30, 0.5) !important; 
+        background-color: rgba(6, 40, 30, 0.4) !important; 
+        backdrop-filter: blur(10px);
         border-radius: 20px !important; 
-        border: 1px solid rgba(16, 185, 129, 0.1) !important; 
+        border: 1px solid rgba(16, 185, 129, 0.2) !important; 
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        margin-bottom: 15px !important;
+        transition: transform 0.2s ease;
     }}
     
+    [data-testid="stChatMessage"]:hover {{
+        transform: translateY(-2px);
+        border: 1px solid rgba(16, 185, 129, 0.5) !important;
+    }}
+
+    /* 5. RESPLANDOR ESPECIAL PARA EL ASISTENTE (ALUMINIA) */
+    [data-testid="stChatMessage"][data-testid="stChatMessageAssistant"] {{
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.15);
+        border-right: 2px solid rgba(16, 185, 129, 0.4) !important;
+    }}
+
+    /* 6. SIDEBAR ESTILO CYBER */
     [data-testid="stSidebar"] {{ 
         background-color: #010805 !important; 
-        border-right: 1px solid #10b98122; 
+        border-right: 1px solid #10b98144; 
+        box-shadow: 5px 0 25px rgba(0,0,0,0.5);
+    }}
+
+    /* 7. BOTONES NEÓN */
+    .stButton>button {{
+        background-color: rgba(16, 185, 129, 0.1) !important;
+        color: #10b981 !important;
+        border: 1px solid #10b981 !important;
+        border-radius: 10px !important;
+        transition: all 0.3s ease !important;
+        text-transform: uppercase;
+        font-weight: 700;
+        letter-spacing: 1px;
+    }}
+
+    .stButton>button:hover {{
+        background-color: #10b981 !important;
+        color: #020f0a !important;
+        box-shadow: 0 0 20px #10b981;
+        transform: scale(1.02);
     }}
 
     /* Ajuste de márgenes para Móviles */
     @media (max-width: 768px) {{
         .block-container {{
-            padding-top: 2rem !important;
-            padding-bottom: 1rem !important;
-            padding-left: 0.8rem !important;
-            padding-right: 0.8rem !important;
+            padding-top: 1.5rem !important;
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
         }}
-        
-        .aluminia-metal {{
-            font-size: 1.8rem !important;
-            margin-bottom: 5px !important;
-        }}
+        .aluminia-metal {{ font-size: 2.2rem !important; }}
     }}
 
     .author-badge {{ 
@@ -154,11 +180,13 @@ st.markdown(f"""
         bottom: 20px; 
         right: 20px; 
         color: #10b981; 
-        font-size: 0.75rem; 
-        font-weight: 800; 
-        background: rgba(6, 40, 30, 0.7); 
-        padding: 6px 15px; 
-        border-radius: 20px; 
+        font-size: 0.65rem; 
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        background: rgba(6, 40, 30, 0.8); 
+        padding: 8px 15px; 
+        border-radius: 5px; 
+        border-left: 2px solid #10b981;
         z-index: 99; 
     }}
     </style>
