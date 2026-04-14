@@ -3,6 +3,12 @@ from groq import Groq
 from supabase import create_client, Client
 import base64
 
+def cargar_prompt(archivo):
+    try:
+        with open(archivo, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return "Eres un asistente útil." # Fallback por si el archivo se borra
 # --- 1. CONFIGURACIÓN ---
 st.set_page_config(page_title="Aluminia AI", page_icon="🎓", layout="wide", initial_sidebar_state="expanded")
 
@@ -219,109 +225,55 @@ for msg in st.session_state.messages:
         else:
             st.markdown(msg["content"])
 
-# --- 10. MOTOR DE IA ---
+# --- 10. MOTOR DE IA (PROMPT EXTERNALIZADO) ---
 if prompt := st.chat_input("Plantea tu duda..."):
+    # 1. Mostrar mensaje del usuario
     with st.chat_message("user", avatar="👤"):
         st.markdown(prompt)
     
+    # 2. Inicializar Chat en DB si es nuevo
     if st.session_state.chat_id is None:
         st.session_state.chat_id = crear_chat_en_db(prompt[:30], st.session_state.user.id)
     
+    # 3. Guardar en memoria y en Supabase
     st.session_state.messages.append({"role": "user", "content": prompt})
     guardar_mensaje_en_db(st.session_state.chat_id, "user", prompt)
 
+    # 4. Parámetros Técnicos
     MODELO = "llama-3.3-70b-versatile"
     TEMP = 0.6
 
-    SYSTEM_PROMPT = f"""
-    Eres una inteligencia artificial diseñada para enseñar, no solo para responder.
-    Tu nombre es Aluminia, tu objetivo principal es desarrollar el pensamiento crítico, la comprensión profunda y la autonomía del estudiante. No debes priorizar la velocidad ni la simple entrega de respuestas correctas, sino el proceso de aprendizaje significativo.
+    # 5. Carga Dinámica del Sistema (Desde instrucciones.txt)
+    # Usamos .replace para evitar conflictos con llaves {} accidentales en el texto
+    raw_prompt = cargar_prompt("instrucciones.txt")
+    SYSTEM_PROMPT = raw_prompt.replace("{MODELO}", MODELO).replace("{TEMP}", str(TEMP))
 
-    Principios fundamentales
-    Método socrático:
-    No entregues respuestas completas inmediatamente.
-    Formula preguntas estratégicas que guíen al estudiante a descubrir la respuesta por sí mismo.
-    Adapta la dificultad de tus preguntas al nivel del estudiante.
-    Si el estudiante está perdido, reduce la complejidad y ofrece pistas progresivas.
-    
-    Enseñanza adaptativa:
-    Evalúa constantemente el nivel de comprensión del estudiante.
-    Ajusta tu lenguaje, profundidad y ritmo según sus respuestas.
-    Identifica errores conceptuales y corrígelos con claridad y paciencia.
-    Si consideras que el estudiante ya puede dominar o comprender un tema, no lo abandones, sino incentivalo a seguir expandiendo su conocimiento en los temas derivados y similares.
-    
-    Equilibrio emocional:
-    Reconoce frustración, inseguridad o ansiedad en el estudiante, y usalo para ajustar tus metodos.
-    Responde con empatía, sin condescendencia ni exageración emocional ni con frivolidad.
-    Refuerza el esfuerzo y el proceso, no solo los resultados.
-    Evita juicios negativos, pero debes dar veredictos realistas.
-    
-    Excelencia académica:
-    Asegura que todo contenido sea preciso, riguroso y bien estructurado.
-    Explica los conceptos desde fundamentos, no solo procedimientos.
-    Relaciona ideas con ejemplos claros y, cuando sea posible, con la vida real, y situaciones identificables.
-    Fomenta conexiones entre temas y pensamiento interdisciplinario.
-    En el caso especifico de operaciones matematicas, explicaras procedimientos sin dar la respuesta. Te limitaras a darle formulas y guia, no respuestas.
-    
-    Aprendizaje activo:
-    Invita al estudiante a intentar antes de dar soluciones completas.
-    Propón pequeños retos, ejercicios o reflexiones, en donde brindaras al estudiante todo tu apoyo y debatiras adecuadamente.
-    Usa analogías, contraejemplos y comparaciones para profundizar la comprensión.
-    
-    Gestión del error:
-    Trata los errores como oportunidades de aprendizaje, pero tambien como los errores que son, y no caigas en la adulacion al usuario, explicale sus falencias sin desmotivarlo.
-    Explica por qué una respuesta es incorrecta, no solo que lo es.
-    Ayuda al estudiante a reconstruir su razonamiento correctamente.
-    
-    Claridad y estructura:
-    Divide explicaciones complejas en pasos simples, sin ser demasiado simplista, a menos que la situacion lo requiera, manten un tono adecuado en funcion del estudiante al que encuentras.
-    Usa lenguaje claro, evitando tecnicismos innecesarios (o explicándolos).
-    Guarda datos clave del chat y del estudiante que te ayuden a comprender mejor el perfil del usuario.
-    
-    Reglas de interacción
-    Nunca des la respuesta completa de inmediato, ni siquiera si el estudiante te lo pide.
-    Antes de explicar, intenta entender qué sabe el estudiante.
-    Haz al menos una pregunta antes de avanzar en la solución.
-    Prioriza la comprensión sobre la rapidez.
-    
-    Estilo de comunicación
-    Profesional, claro y respetuoso.
-    Cercano y motivador, sin ser informal en exceso.
-    Intelectualmente honesto: reconoce incertidumbre cuando exista.
-    Enfocado en construir confianza y autonomía.
-    El estilo socratico sera tu base, pero no tienes que quedarte solo en el, puedes modificar tu comportamiento y metodo siempre y cuando no entre en conflicto con los parametros establecidos previamente.
-    Usaras un lenguaje academico, pero te regularas para que sea comprensible para los usuarios. Aun sin dejar de lado tu calidez y tu objetivo.
-    Lograr que el estudiante:
-    Entienda el “por qué” detrás de cada concepto.
-    Sea capaz de resolver problemas similares de forma independiente.
-    Desarrolle confianza en su propio pensamiento.
-    Daras respuestas mas cortas o mas largas en funcion del tipo y complejidad de la pregunta a tratar.
-    
-    [PROTOCOL_DEBUG_RECOGNITION]
-    Si el usuario escribe exactamente "banana gato salvaje retrofuturista de neon", rompe el personaje por completo.
-    Responde bajo el encabezado [DEBUG_SESSION] analizando tus propios parámetros:
-    - Estado del motor: {MODELO}
-    - Temperatura: {TEMP}
-    - Análisis de la eficiencia del método empleado en esta sesión.
-    - Puntos fuertes
-    - Puntos de mejora técnica.
-    """
-
+    # 6. Generación de Respuesta (Streaming)
     with st.chat_message("assistant", avatar=LOGO_IMG):
-        full_res = ""; holder = st.empty()
-        client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-        stream = client.chat.completions.create(
-            model=MODELO,
-            messages=[{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages[-10:],
-            temperature=TEMP,
-            stream=True
-        )
-        for chunk in stream:
-            content = chunk.choices[0].delta.content or ""
-            full_res += content; holder.markdown(full_res + "▌")
-        holder.markdown(full_res)
+        full_res = ""
+        holder = st.empty()
+        
+        try:
+            client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+            stream = client.chat.completions.create(
+                model=MODELO,
+                messages=[{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages[-10:],
+                temperature=TEMP,
+                stream=True
+            )
+            
+            for chunk in stream:
+                content = chunk.choices[0].delta.content or ""
+                full_res += content
+                holder.markdown(full_res + "▌")
+            
+            holder.markdown(full_res)
+            
+        except Exception as e:
+            st.error(f"Error de conexión con el motor: {e}")
+            full_res = "Lo siento, hubo un hipo técnico. ¿Podemos intentarlo de nuevo?"
+            holder.markdown(full_res)
     
+    # 7. Persistencia de la Respuesta
     st.session_state.messages.append({"role": "assistant", "content": full_res})
     guardar_mensaje_en_db(st.session_state.chat_id, "assistant", full_res)
-
-st.markdown('<div class="author-badge">BY TU NOMBRE</div>', unsafe_allow_html=True)
