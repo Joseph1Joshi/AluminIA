@@ -324,23 +324,19 @@ for msg in st.session_state.messages:
             st.markdown(f'<div class="debug-response">{msg["content"]}</div>', unsafe_allow_html=True)
         else:
             st.markdown(msg["content"])
+# --- 10. MOTOR DE IA (VERSIÓN ANCLADA AL FONDO) ---
 
-# --- 10. MOTOR DE IA (INTERFAZ DE ENTRADA + RAG) ---
-
-# 1. Contenedor de entrada (Se coloca después del loop de mensajes de la Sección 9)
+# 1. Zona de Acción (Botón "+" situado justo antes del input)
+# Lo envolvemos en un container para que no flote por toda la pantalla
 with st.container():
-    # Creamos las columnas para el botón "+" y el input
-    # Usamos gap="small" para que estén pegados
-    col_plus, col_txt = st.columns([0.07, 0.93], gap="small")
-
-    with col_plus:
-        # Botón de "+" usando popover
-        with st.popover("＋", help="Subir archivos o acciones rápidas"):
-            st.markdown("<p style='color:#10b981; font-weight:bold; margin-bottom:5px;'>Añadir Conocimiento</p>", unsafe_allow_html=True)
+    col_btn, col_empty = st.columns([0.2, 0.8])
+    with col_btn:
+        with st.popover("＋ Subir", help="Añadir apuntes PDF o TXT"):
+            st.markdown("<p style='color:#10b981; font-weight:bold;'>Memoria Externa</p>", unsafe_allow_html=True)
             archivo_adjunto = st.file_uploader(
-                "Selecciona un PDF o TXT", 
+                "Documento", 
                 type=["pdf", "txt"], 
-                key="chat_uploader",
+                key="chat_uploader_final",
                 label_visibility="collapsed"
             )
             
@@ -349,42 +345,38 @@ with st.container():
                     texto_extraido = procesar_archivo(archivo_adjunto)
                     if texto_extraido:
                         st.session_state.contexto_documento = texto_extraido
-                        st.toast(f"Documento '{archivo_adjunto.name}' vinculado", icon="✅")
+                        st.toast(f"'{archivo_adjunto.name}' vinculado", icon="✅")
 
-    with col_txt:
-        # El chat_input se integra en la columna
-        prompt = st.chat_input("Plantea tu duda o analiza tus apuntes...")
+# 2. Input del Chat (FUERA de columnas para asegurar el anclaje inferior)
+prompt = st.chat_input("Plantea tu duda o analiza tus apuntes...")
 
-# 2. Lógica de Procesamiento cuando se envía un mensaje
+# 3. Lógica de Procesamiento
 if prompt:
-    # Mostrar mensaje del usuario inmediatamente
+    # Mostrar mensaje del usuario
     with st.chat_message("user", avatar="👤"):
         st.markdown(prompt)
     
-    # Gestión de Base de Datos
+    # DB Sync
     if st.session_state.chat_id is None:
         st.session_state.chat_id = crear_chat_en_db(prompt[:30], st.session_state.user.id)
     
-    # Persistencia
     st.session_state.messages.append({"role": "user", "content": prompt})
     guardar_mensaje_en_db(st.session_state.chat_id, "user", prompt)
 
-    # Configuración del Motor
+    # Motor Configuration
     MODELO = "llama-3.3-70b-versatile"
     TEMP = 0.6
 
-    # Construcción del Prompt con Contexto RAG
+    # RAG Injection
     raw_instructions = cargar_prompt("instrucciones.txt")
-    
     contexto_inyectado = ""
     if "contexto_documento" in st.session_state and st.session_state.contexto_documento:
-        # Límite de seguridad para el contexto
         fragmento_seguro = st.session_state.contexto_documento[:15000]
         contexto_inyectado = f"\n\n[CONTEXTO DE ARCHIVO CARGADO]:\n{fragmento_seguro}\n---"
 
     SYSTEM_PROMPT = raw_instructions.replace("{MODELO}", MODELO).replace("{TEMP}", str(TEMP)) + contexto_inyectado
 
-    # Generación de Respuesta en Streaming
+    # Generación con Streaming
     with st.chat_message("assistant", avatar=LOGO_IMG):
         full_res = ""
         holder = st.empty()
@@ -406,13 +398,13 @@ if prompt:
             holder.markdown(full_res)
             
         except Exception as e:
-            st.error(f"Error de comunicación: {e}")
-            full_res = "Hubo un error al procesar la señal. ¿Reintentamos?"
+            st.error(f"Señal interrumpida: {e}")
+            full_res = "Hubo un error en la conexión. ¿Podemos intentar de nuevo?"
             holder.markdown(full_res)
     
-    # Guardado Final
+    # Persistencia Final
     st.session_state.messages.append({"role": "assistant", "content": full_res})
     guardar_mensaje_en_db(st.session_state.chat_id, "assistant", full_res)
     
-    # Rerun para limpiar el input y actualizar la vista
+    # Forzar actualización de UI
     st.rerun()
