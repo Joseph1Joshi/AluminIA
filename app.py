@@ -96,7 +96,7 @@ if "user" not in st.session_state: st.session_state.user = None
 if "messages" not in st.session_state: st.session_state.messages = []
 if "chat_id" not in st.session_state: st.session_state.chat_id = None
 
-# --- 5. CSS MAESTRO (VERSION VIBRANTE & GLOW) ---
+# --- 5. CSS MAESTRO (VERSION VIBRANTE & GLOW - PARCHADA) ---
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&family=JetBrains+Mono&display=swap');
@@ -207,9 +207,8 @@ st.markdown(f"""
         z-index: 99; 
     }}
 
-
-/* --- BOTÓN FLOTANTE DE "+" --- */
-    .stPopover > button {
+    /* --- BOTÓN FLOTANTE DE "+" (PARCHADO CON LLAVES DOBLES) --- */
+    .stPopover > button {{
         border-radius: 50% !important;
         width: 40px !important;
         height: 40px !important;
@@ -222,14 +221,14 @@ st.markdown(f"""
         color: #10b981 !important;
         box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
         transition: all 0.3s ease;
-    }
+    }}
 
-    .stPopover > button:hover {
+    .stPopover > button:hover {{
         background: #10b981 !important;
         color: #020f0a !important;
         box-shadow: 0 0 20px #10b981;
-        transform: rotate(90deg); /* El "+" gira al pasar el mouse */
-    }
+        transform: rotate(90deg);
+    }}
     </style>
     """, unsafe_allow_html=True)
 # --- 7. SISTEMA DE LOGIN Y REGISTRO ---
