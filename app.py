@@ -327,60 +327,64 @@ for msg in st.session_state.messages:
 
 # --- 10. MOTOR DE IA (INTERFAZ DE ENTRADA + RAG) ---
 
-# Creamos un contenedor de columnas para alinear el "+" con el input
-col_plus, col_txt = st.columns([0.07, 0.93], gap="small")
+# 1. Contenedor de entrada (Se coloca después del loop de mensajes de la Sección 9)
+with st.container():
+    # Creamos las columnas para el botón "+" y el input
+    # Usamos gap="small" para que estén pegados
+    col_plus, col_txt = st.columns([0.07, 0.93], gap="small")
 
-with col_plus:
-    # Botón de "+" usando popover para no ocupar espacio
-    with st.popover("＋", help="Subir archivos o acciones rápidas"):
-        st.markdown("<p style='color:#10b981; font-weight:bold;'>Añadir Conocimiento</p>", unsafe_allow_html=True)
-        archivo_adjunto = st.file_uploader(
-            "Selecciona un PDF o TXT", 
-            type=["pdf", "txt"], 
-            key="chat_uploader",
-            label_visibility="collapsed"
-        )
-        
-        if archivo_adjunto:
-            with st.spinner("Leyendo..."):
-                texto_extraido = procesar_archivo(archivo_adjunto)
-                if texto_extraido:
-                    st.session_state.contexto_documento = texto_extraido
-                    st.toast(f"Documento '{archivo_adjunto.name}' vinculado", icon="✅")
+    with col_plus:
+        # Botón de "+" usando popover
+        with st.popover("＋", help="Subir archivos o acciones rápidas"):
+            st.markdown("<p style='color:#10b981; font-weight:bold; margin-bottom:5px;'>Añadir Conocimiento</p>", unsafe_allow_html=True)
+            archivo_adjunto = st.file_uploader(
+                "Selecciona un PDF o TXT", 
+                type=["pdf", "txt"], 
+                key="chat_uploader",
+                label_visibility="collapsed"
+            )
+            
+            if archivo_adjunto:
+                with st.spinner("Leyendo..."):
+                    texto_extraido = procesar_archivo(archivo_adjunto)
+                    if texto_extraido:
+                        st.session_state.contexto_documento = texto_extraido
+                        st.toast(f"Documento '{archivo_adjunto.name}' vinculado", icon="✅")
 
-with col_txt:
-    prompt = st.chat_input("Plantea tu duda o analiza tus apuntes...")
+    with col_txt:
+        # El chat_input se integra en la columna
+        prompt = st.chat_input("Plantea tu duda o analiza tus apuntes...")
 
-# Lógica de Procesamiento cuando se envía un mensaje
+# 2. Lógica de Procesamiento cuando se envía un mensaje
 if prompt:
-    # 1. Mostrar mensaje del usuario
+    # Mostrar mensaje del usuario inmediatamente
     with st.chat_message("user", avatar="👤"):
         st.markdown(prompt)
     
-    # 2. Gestión de Base de Datos (Chat ID)
+    # Gestión de Base de Datos
     if st.session_state.chat_id is None:
         st.session_state.chat_id = crear_chat_en_db(prompt[:30], st.session_state.user.id)
     
-    # 3. Persistencia en Memoria y DB
+    # Persistencia
     st.session_state.messages.append({"role": "user", "content": prompt})
     guardar_mensaje_en_db(st.session_state.chat_id, "user", prompt)
 
-    # 4. Configuración del Motor
+    # Configuración del Motor
     MODELO = "llama-3.3-70b-versatile"
     TEMP = 0.6
 
-    # 5. Construcción del Prompt con Contexto RAG
+    # Construcción del Prompt con Contexto RAG
     raw_instructions = cargar_prompt("instrucciones.txt")
     
     contexto_inyectado = ""
     if "contexto_documento" in st.session_state and st.session_state.contexto_documento:
-        # Limitamos a 15k caracteres para seguridad de tokens
+        # Límite de seguridad para el contexto
         fragmento_seguro = st.session_state.contexto_documento[:15000]
         contexto_inyectado = f"\n\n[CONTEXTO DE ARCHIVO CARGADO]:\n{fragmento_seguro}\n---"
 
     SYSTEM_PROMPT = raw_instructions.replace("{MODELO}", MODELO).replace("{TEMP}", str(TEMP)) + contexto_inyectado
 
-    # 6. Generación de Respuesta en Streaming
+    # Generación de Respuesta en Streaming
     with st.chat_message("assistant", avatar=LOGO_IMG):
         full_res = ""
         holder = st.empty()
@@ -406,6 +410,9 @@ if prompt:
             full_res = "Hubo un error al procesar la señal. ¿Reintentamos?"
             holder.markdown(full_res)
     
-    # 7. Guardado Final de la Respuesta
+    # Guardado Final
     st.session_state.messages.append({"role": "assistant", "content": full_res})
     guardar_mensaje_en_db(st.session_state.chat_id, "assistant", full_res)
+    
+    # Rerun para limpiar el input y actualizar la vista
+    st.rerun()
