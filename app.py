@@ -346,7 +346,11 @@ with st.container():
                     if texto_extraido:
                         st.session_state.contexto_documento = texto_extraido
                         st.toast(f"'{archivo_adjunto.name}' vinculado", icon="✅")
-
+                        # Opcional: Inyectar un mensaje invisible para "despertar" a la IA
+                        st.session_state.messages.append({
+                            "role": "assistant", 
+                            "content": f"He procesado **{archivo_adjunto.name}**. ¿Quieres que analicemos algún concepto específico de este material?"
+                        })
 # 2. Input del Chat (FUERA de columnas para asegurar el anclaje inferior)
 prompt = st.chat_input("Plantea tu duda o analiza tus apuntes...")
 
