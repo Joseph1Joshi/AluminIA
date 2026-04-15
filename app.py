@@ -324,12 +324,11 @@ for msg in st.session_state.messages:
             st.markdown(f'<div class="debug-response">{msg["content"]}</div>', unsafe_allow_html=True)
         else:
             st.markdown(msg["content"])
-# --- 10. MOTOR DE IA (VERSIÓN ANCLADA AL FONDO) ---
+# --- 10. MOTOR DE IA (VERSIÓN SIN ECO) ---
 
-# 1. Zona de Acción (Botón "+" situado justo antes del input)
-# Lo envolvemos en un container para que no flote por toda la pantalla
+# 1. Zona de Acción (Interfaz de carga)
 with st.container():
-    col_btn, col_empty = st.columns([0.2, 0.8])
+    col_btn, _ = st.columns([0.2, 0.8])
     with col_btn:
         with st.popover("＋ Subir", help="Añadir apuntes PDF o TXT"):
             st.markdown("<p style='color:#10b981; font-weight:bold;'>Memoria Externa</p>", unsafe_allow_html=True)
@@ -346,41 +345,36 @@ with st.container():
                     if texto_extraido:
                         st.session_state.contexto_documento = texto_extraido
                         st.toast(f"'{archivo_adjunto.name}' vinculado", icon="✅")
-                        # Opcional: Inyectar un mensaje invisible para "despertar" a la IA
+                        # Mensaje de confirmación en el historial
                         st.session_state.messages.append({
                             "role": "assistant", 
-                            "content": f"He procesado **{archivo_adjunto.name}**. ¿Quieres que analicemos algún concepto específico de este material?"
+                            "content": f"He procesado **{archivo_adjunto.name}**. ¿Qué concepto quieres que analicemos de este material?"
                         })
-# 2. Input del Chat (FUERA de columnas para asegurar el anclaje inferior)
+                        st.rerun()
+
+# 2. Input del Chat (Anclado al fondo)
 prompt = st.chat_input("Plantea tu duda o analiza tus apuntes...")
 
-# 3. Lógica de Procesamiento
+# 3. Lógica de Procesamiento (Silenciosa)
 if prompt:
-    # Mostrar mensaje del usuario
-    with st.chat_message("user", avatar="👤"):
-        st.markdown(prompt)
-    
-    # DB Sync
+    # Registramos en DB y Memoria pero NO imprimimos en pantalla todavía
     if st.session_state.chat_id is None:
         st.session_state.chat_id = crear_chat_en_db(prompt[:30], st.session_state.user.id)
     
     st.session_state.messages.append({"role": "user", "content": prompt})
     guardar_mensaje_en_db(st.session_state.chat_id, "user", prompt)
 
-    # Motor Configuration
+    # Configuración de Contexto
     MODELO = "llama-3.3-70b-versatile"
-    TEMP = 0.6
-
-    # RAG Injection
     raw_instructions = cargar_prompt("instrucciones.txt")
     contexto_inyectado = ""
     if "contexto_documento" in st.session_state and st.session_state.contexto_documento:
         fragmento_seguro = st.session_state.contexto_documento[:15000]
         contexto_inyectado = f"\n\n[CONTEXTO DE ARCHIVO CARGADO]:\n{fragmento_seguro}\n---"
 
-    SYSTEM_PROMPT = raw_instructions.replace("{MODELO}", MODELO).replace("{TEMP}", str(TEMP)) + contexto_inyectado
+    SYSTEM_PROMPT = raw_instructions.replace("{MODELO}", MODELO).replace("{TEMP}", "0.6") + contexto_inyectado
 
-    # Generación con Streaming
+    # Generación de Respuesta (Streaming temporal)
     with st.chat_message("assistant", avatar=LOGO_IMG):
         full_res = ""
         holder = st.empty()
@@ -390,7 +384,7 @@ if prompt:
             stream = client.chat.completions.create(
                 model=MODELO,
                 messages=[{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages[-10:],
-                temperature=TEMP,
+                temperature=0.6,
                 stream=True
             )
             
@@ -403,12 +397,12 @@ if prompt:
             
         except Exception as e:
             st.error(f"Señal interrumpida: {e}")
-            full_res = "Hubo un error en la conexión. ¿Podemos intentar de nuevo?"
+            full_res = "Hubo un error en la conexión."
             holder.markdown(full_res)
     
-    # Persistencia Final
+    # Guardado Final y REINICIO LIMPIO
     st.session_state.messages.append({"role": "assistant", "content": full_res})
     guardar_mensaje_en_db(st.session_state.chat_id, "assistant", full_res)
     
-    # Forzar actualización de UI
+    # Este rerun hace que la SECCIÓN 9 pinte la realidad sin duplicados
     st.rerun()
