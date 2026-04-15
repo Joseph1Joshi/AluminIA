@@ -324,7 +324,7 @@ for msg in st.session_state.messages:
             st.markdown(f'<div class="debug-response">{msg["content"]}</div>', unsafe_allow_html=True)
         else:
             st.markdown(msg["content"])
-# --- 10. MOTOR DE IA (VERSIÓN SIN ECO) ---
+# --- 10. MOTOR DE IA (VERSIÓN CON CERROJO DE SEGURIDAD) ---
 
 # 1. Zona de Acción (Interfaz de carga)
 with st.container():
@@ -335,46 +335,51 @@ with st.container():
             archivo_adjunto = st.file_uploader(
                 "Documento", 
                 type=["pdf", "txt"], 
-                key="chat_uploader_final",
+                key="chat_uploader_vfinal",
                 label_visibility="collapsed"
             )
             
+            # CERROJO: Solo procesamos si hay archivo Y no es el mismo que acabamos de leer
             if archivo_adjunto:
-                with st.spinner("Leyendo..."):
-                    texto_extraido = procesar_archivo(archivo_adjunto)
-                    if texto_extraido:
-                        st.session_state.contexto_documento = texto_extraido
-                        st.toast(f"'{archivo_adjunto.name}' vinculado", icon="✅")
-                        # Mensaje de confirmación en el historial
-                        st.session_state.messages.append({
-                            "role": "assistant", 
-                            "content": f"He procesado **{archivo_adjunto.name}**. ¿Qué concepto quieres que analicemos de este material?"
-                        })
-                        st.rerun()
+                nombre_id = f"{archivo_adjunto.name}_{archivo_adjunto.size}"
+                if st.session_state.get("last_file_id") != nombre_id:
+                    with st.spinner("Vinculando..."):
+                        texto = procesar_archivo(archivo_adjunto)
+                        if texto:
+                            st.session_state.contexto_documento = texto
+                            st.session_state.last_file_id = nombre_id # Cerramos el candado
+                            
+                            # Mensaje único de confirmación
+                            confirmacion = {
+                                "role": "assistant", 
+                                "content": f"He procesado **{archivo_adjunto.name}**. Ya puedes hacerme preguntas sobre este material."
+                            }
+                            st.session_state.messages.append(confirmacion)
+                            st.toast("Documento listo", icon="✅")
+                            st.rerun()
 
 # 2. Input del Chat (Anclado al fondo)
 prompt = st.chat_input("Plantea tu duda o analiza tus apuntes...")
 
-# 3. Lógica de Procesamiento (Silenciosa)
+# 3. Lógica de Procesamiento (Silenciosa para evitar ecos)
 if prompt:
-    # Registramos en DB y Memoria pero NO imprimimos en pantalla todavía
+    # Registramos sin imprimir (La Sección 9 lo hará tras el rerun)
     if st.session_state.chat_id is None:
         st.session_state.chat_id = crear_chat_en_db(prompt[:30], st.session_state.user.id)
     
     st.session_state.messages.append({"role": "user", "content": prompt})
     guardar_mensaje_en_db(st.session_state.chat_id, "user", prompt)
 
-    # Configuración de Contexto
+    # Contexto e Instrucciones
     MODELO = "llama-3.3-70b-versatile"
     raw_instructions = cargar_prompt("instrucciones.txt")
     contexto_inyectado = ""
-    if "contexto_documento" in st.session_state and st.session_state.contexto_documento:
-        fragmento_seguro = st.session_state.contexto_documento[:15000]
-        contexto_inyectado = f"\n\n[CONTEXTO DE ARCHIVO CARGADO]:\n{fragmento_seguro}\n---"
+    if st.session_state.get("contexto_documento"):
+        contexto_inyectado = f"\n\n[CONTEXTO DE ARCHIVO CARGADO]:\n{st.session_state.contexto_documento[:15000]}\n---"
 
     SYSTEM_PROMPT = raw_instructions.replace("{MODELO}", MODELO).replace("{TEMP}", "0.6") + contexto_inyectado
 
-    # Generación de Respuesta (Streaming temporal)
+    # Generación Visual (Streaming)
     with st.chat_message("assistant", avatar=LOGO_IMG):
         full_res = ""
         holder = st.empty()
@@ -396,13 +401,13 @@ if prompt:
             holder.markdown(full_res)
             
         except Exception as e:
-            st.error(f"Señal interrumpida: {e}")
-            full_res = "Hubo un error en la conexión."
+            st.error(f"Error: {e}")
+            full_res = "Hubo un fallo en la conexión."
             holder.markdown(full_res)
     
-    # Guardado Final y REINICIO LIMPIO
+    # Registro final y limpieza de input vía rerun
     st.session_state.messages.append({"role": "assistant", "content": full_res})
     guardar_mensaje_en_db(st.session_state.chat_id, "assistant", full_res)
-    
+    st.rerun()
     # Este rerun hace que la SECCIÓN 9 pinte la realidad sin duplicados
     st.rerun()
