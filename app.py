@@ -302,7 +302,7 @@ for msg in st.session_state.messages:
         else:
             st.markdown(msg["content"])
 
-# --- 10. MOTOR DE IA (PROMPT EXTERNALIZADO) ---
+# --- 10. MOTOR DE IA (PROMPT EXTERNALIZADO + CONTEXTO DE DOCS) ---
 if prompt := st.chat_input("Plantea tu duda..."):
     # 1. Mostrar mensaje del usuario
     with st.chat_message("user", avatar="👤"):
@@ -320,10 +320,18 @@ if prompt := st.chat_input("Plantea tu duda..."):
     MODELO = "llama-3.3-70b-versatile"
     TEMP = 0.6
 
-    # 5. Carga Dinámica del Sistema (Desde instrucciones.txt)
-    # Usamos .replace para evitar conflictos con llaves {} accidentales en el texto
+    # 5. Carga Dinámica del Sistema (Instrucciones + PDF/TXT)
     raw_prompt = cargar_prompt("instrucciones.txt")
-    SYSTEM_PROMPT = raw_prompt.replace("{MODELO}", MODELO).replace("{TEMP}", str(TEMP))
+    
+    # Inyección de contexto si el usuario subió un archivo
+    contexto_doc = ""
+    if "contexto_documento" in st.session_state and st.session_state.contexto_documento:
+        # Limitamos el texto del PDF a los primeros 15,000 caracteres para no saturar el contexto
+        texto_seguro = st.session_state.contexto_documento[:15000]
+        contexto_doc = f"\n\n[CONTEXTO DEL DOCUMENTO CARGADO]:\n{texto_seguro}\n---"
+
+    # Construcción del SYSTEM_PROMPT final
+    SYSTEM_PROMPT = raw_prompt.replace("{MODELO}", MODELO).replace("{TEMP}", str(TEMP)) + contexto_doc
 
     # 6. Generación de Respuesta (Streaming)
     with st.chat_message("assistant", avatar=LOGO_IMG):
@@ -332,6 +340,7 @@ if prompt := st.chat_input("Plantea tu duda..."):
         
         try:
             client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+            # Enviamos el SYSTEM_PROMPT con el PDF inyectado + los últimos 10 mensajes
             stream = client.chat.completions.create(
                 model=MODELO,
                 messages=[{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages[-10:],
