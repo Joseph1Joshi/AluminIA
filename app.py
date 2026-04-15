@@ -206,6 +206,30 @@ st.markdown(f"""
         border-left: 2px solid #10b981;
         z-index: 99; 
     }}
+
+
+/* --- BOTÓN FLOTANTE DE "+" --- */
+    .stPopover > button {
+        border-radius: 50% !important;
+        width: 40px !important;
+        height: 40px !important;
+        padding: 0px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border: 1px solid #10b981 !important;
+        background: rgba(16, 185, 129, 0.1) !important;
+        color: #10b981 !important;
+        box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+        transition: all 0.3s ease;
+    }
+
+    .stPopover > button:hover {
+        background: #10b981 !important;
+        color: #020f0a !important;
+        box-shadow: 0 0 20px #10b981;
+        transform: rotate(90deg); /* El "+" gira al pasar el mouse */
+    }
     </style>
     """, unsafe_allow_html=True)
 # --- 7. SISTEMA DE LOGIN Y REGISTRO ---
@@ -302,45 +326,68 @@ for msg in st.session_state.messages:
         else:
             st.markdown(msg["content"])
 
-# --- 10. MOTOR DE IA (PROMPT EXTERNALIZADO + CONTEXTO DE DOCS) ---
-if prompt := st.chat_input("Plantea tu duda..."):
+# --- 10. MOTOR DE IA (INTERFAZ DE ENTRADA + RAG) ---
+
+# Creamos un contenedor de columnas para alinear el "+" con el input
+col_plus, col_txt = st.columns([0.07, 0.93], gap="small")
+
+with col_plus:
+    # Botón de "+" usando popover para no ocupar espacio
+    with st.popover("＋", help="Subir archivos o acciones rápidas"):
+        st.markdown("<p style='color:#10b981; font-weight:bold;'>Añadir Conocimiento</p>", unsafe_allow_html=True)
+        archivo_adjunto = st.file_uploader(
+            "Selecciona un PDF o TXT", 
+            type=["pdf", "txt"], 
+            key="chat_uploader",
+            label_visibility="collapsed"
+        )
+        
+        if archivo_adjunto:
+            with st.spinner("Leyendo..."):
+                texto_extraido = procesar_archivo(archivo_adjunto)
+                if texto_extraido:
+                    st.session_state.contexto_documento = texto_extraido
+                    st.toast(f"Documento '{archivo_adjunto.name}' vinculado", icon="✅")
+
+with col_txt:
+    prompt = st.chat_input("Plantea tu duda o analiza tus apuntes...")
+
+# Lógica de Procesamiento cuando se envía un mensaje
+if prompt:
     # 1. Mostrar mensaje del usuario
     with st.chat_message("user", avatar="👤"):
         st.markdown(prompt)
     
-    # 2. Inicializar Chat en DB si es nuevo
+    # 2. Gestión de Base de Datos (Chat ID)
     if st.session_state.chat_id is None:
         st.session_state.chat_id = crear_chat_en_db(prompt[:30], st.session_state.user.id)
     
-    # 3. Guardar en memoria y en Supabase
+    # 3. Persistencia en Memoria y DB
     st.session_state.messages.append({"role": "user", "content": prompt})
     guardar_mensaje_en_db(st.session_state.chat_id, "user", prompt)
 
-    # 4. Parámetros Técnicos
+    # 4. Configuración del Motor
     MODELO = "llama-3.3-70b-versatile"
     TEMP = 0.6
 
-    # 5. Carga Dinámica del Sistema (Instrucciones + PDF/TXT)
-    raw_prompt = cargar_prompt("instrucciones.txt")
+    # 5. Construcción del Prompt con Contexto RAG
+    raw_instructions = cargar_prompt("instrucciones.txt")
     
-    # Inyección de contexto si el usuario subió un archivo
-    contexto_doc = ""
+    contexto_inyectado = ""
     if "contexto_documento" in st.session_state and st.session_state.contexto_documento:
-        # Limitamos el texto del PDF a los primeros 15,000 caracteres para no saturar el contexto
-        texto_seguro = st.session_state.contexto_documento[:15000]
-        contexto_doc = f"\n\n[CONTEXTO DEL DOCUMENTO CARGADO]:\n{texto_seguro}\n---"
+        # Limitamos a 15k caracteres para seguridad de tokens
+        fragmento_seguro = st.session_state.contexto_documento[:15000]
+        contexto_inyectado = f"\n\n[CONTEXTO DE ARCHIVO CARGADO]:\n{fragmento_seguro}\n---"
 
-    # Construcción del SYSTEM_PROMPT final
-    SYSTEM_PROMPT = raw_prompt.replace("{MODELO}", MODELO).replace("{TEMP}", str(TEMP)) + contexto_doc
+    SYSTEM_PROMPT = raw_instructions.replace("{MODELO}", MODELO).replace("{TEMP}", str(TEMP)) + contexto_inyectado
 
-    # 6. Generación de Respuesta (Streaming)
+    # 6. Generación de Respuesta en Streaming
     with st.chat_message("assistant", avatar=LOGO_IMG):
         full_res = ""
         holder = st.empty()
         
         try:
             client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-            # Enviamos el SYSTEM_PROMPT con el PDF inyectado + los últimos 10 mensajes
             stream = client.chat.completions.create(
                 model=MODELO,
                 messages=[{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages[-10:],
@@ -356,10 +403,10 @@ if prompt := st.chat_input("Plantea tu duda..."):
             holder.markdown(full_res)
             
         except Exception as e:
-            st.error(f"Error de conexión con el motor: {e}")
-            full_res = "Lo siento, hubo un hipo técnico. ¿Podemos intentarlo de nuevo?"
+            st.error(f"Error de comunicación: {e}")
+            full_res = "Hubo un error al procesar la señal. ¿Reintentamos?"
             holder.markdown(full_res)
     
-    # 7. Persistencia de la Respuesta
+    # 7. Guardado Final de la Respuesta
     st.session_state.messages.append({"role": "assistant", "content": full_res})
     guardar_mensaje_en_db(st.session_state.chat_id, "assistant", full_res)
