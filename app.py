@@ -324,9 +324,9 @@ for msg in st.session_state.messages:
             st.markdown(f'<div class="debug-response">{msg["content"]}</div>', unsafe_allow_html=True)
         else:
             st.markdown(msg["content"])
-# --- 10. MOTOR DE IA (VERSIÓN CON BLOQUEO DE DOBLE SENTIDO) ---
+# --- 10. MOTOR DE IA (VERSIÓN CON PRIORIDAD DE CONTEXTO) ---
 
-# 1. Interfaz de Carga (Simplificada para evitar triggers falsos)
+# 1. Interfaz de Carga con bloqueo de bucle
 with st.container():
     col_btn, _ = st.columns([0.2, 0.8])
     with col_btn:
@@ -334,54 +334,58 @@ with st.container():
             archivo_adjunto = st.file_uploader(
                 "Documento", 
                 type=["pdf", "txt"], 
-                key="chat_uploader_definitivo"
+                key="chat_uploader_v5"
             )
             
-            # Solo procesamos si el archivo existe y NO ha sido marcado como "leído"
             if archivo_adjunto:
                 file_key = f"leido_{archivo_adjunto.name}"
                 if not st.session_state.get(file_key, False):
-                    with st.spinner("Sincronizando..."):
+                    with st.spinner("Memorizando..."):
                         texto = procesar_archivo(archivo_adjunto)
                         if texto:
-                            # 1. Guardamos el contenido
                             st.session_state.contexto_documento = texto
-                            # 2. Marcamos este archivo específico como ya procesado
                             st.session_state[file_key] = True 
-                            # 3. Añadimos mensaje de sistema al historial
-                            msg_sistema = {
+                            st.session_state.messages.append({
                                 "role": "assistant", 
-                                "content": f"📝 He memorizado **{archivo_adjunto.name}**. ¿Qué quieres analizar?"
-                            }
-                            st.session_state.messages.append(msg_sistema)
-                            # 4. Forzamos el guardado y reinicio único
+                                "content": f"📝 He cargado **{archivo_adjunto.name}** en mi memoria activa. ¿Qué quieres que analicemos?"
+                            })
                             st.rerun()
 
-# 2. Input de Chat (Anclado al fondo)
+# 2. Input de Chat
 prompt = st.chat_input("Plantea tu duda...")
 
-# 3. Lógica de IA (Solo se ejecuta si el usuario escribe algo)
+# 3. Lógica de IA
 if prompt:
-    # Evitar que el prompt se procese dos veces si el usuario hace doble clic
     if "last_prompt" in st.session_state and st.session_state.last_prompt == prompt:
         st.stop()
     
     st.session_state.last_prompt = prompt
-
     if st.session_state.chat_id is None:
         st.session_state.chat_id = crear_chat_en_db(prompt[:30], st.session_state.user.id)
     
     st.session_state.messages.append({"role": "user", "content": prompt})
     guardar_mensaje_en_db(st.session_state.chat_id, "user", prompt)
 
-    # Preparación de Contexto RAG
+    # --- PARCHE DE INYECCIÓN DE DATOS ---
     MODELO = "llama-3.3-70b-versatile"
     raw_instructions = cargar_prompt("instrucciones.txt")
-    contexto = ""
-    if st.session_state.get("contexto_documento"):
-        contexto = f"\n\n[CONTEXTO]:\n{st.session_state.contexto_documento[:15000]}\n---"
     
-    SYSTEM_PROMPT = raw_instructions.replace("{MODELO}", MODELO).replace("{TEMP}", "0.6") + contexto
+    # Construimos un bloque de contexto muy agresivo
+    texto_archivo = st.session_state.get("contexto_documento", "").strip()
+    if texto_archivo:
+        contexto_rag = f"""
+        [SISTEMA DE MEMORIA EXTERNA]
+        DATOS DEL DOCUMENTO:
+        {texto_archivo[:15000]}
+        [FIN DE MEMORIA]
+        
+        INSTRUCCIÓN: Responde basándote en los DATOS DEL DOCUMENTO anteriores.
+        """
+    else:
+        contexto_rag = ""
+
+    # Juntamos todo: Primero el contexto, luego las instrucciones base
+    SYSTEM_PROMPT = f"{contexto_rag}\n\n{raw_instructions.replace('{MODELO}', MODELO)}"
 
     # Respuesta Visual (Streaming)
     with st.chat_message("assistant", avatar=LOGO_IMG):
@@ -392,7 +396,7 @@ if prompt:
             stream = client.chat.completions.create(
                 model=MODELO,
                 messages=[{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages[-10:],
-                temperature=0.6,
+                temperature=0.4, # Bajamos un poco la temperatura para que sea más fiel al texto
                 stream=True
             )
             for chunk in stream:
@@ -401,10 +405,9 @@ if prompt:
                 holder.markdown(full_res + "▌")
             holder.markdown(full_res)
         except Exception as e:
-            st.error(f"Error de conexión: {e}")
-            full_res = "Hubo un hipo en la red."
+            st.error(f"Error: {e}")
+            full_res = "Hubo un problema con la red neuronal."
 
-    # Guardado y Rerun final
     st.session_state.messages.append({"role": "assistant", "content": full_res})
     guardar_mensaje_en_db(st.session_state.chat_id, "assistant", full_res)
     st.rerun()
