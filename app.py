@@ -2,6 +2,7 @@ import streamlit as st
 from groq import Groq
 from supabase import create_client, Client
 import base64
+from pypdf import PdfReader
 
 def cargar_prompt(archivo):
     try:
@@ -9,6 +10,22 @@ def cargar_prompt(archivo):
             return f.read()
     except FileNotFoundError:
         return "Eres un asistente útil." # Fallback por si el archivo se borra
+
+
+def procesar_archivo(archivo_subido):
+    texto_total = ""
+    try:
+        if archivo_subido.name.endswith('.pdf'):
+            pdf_reader = PdfReader(archivo_subido)
+            for page in pdf_reader.pages:
+                texto_total += page.extract_text() + "\n"
+        elif archivo_subido.name.endswith('.txt'):
+            texto_total = archivo_subido.read().decode("utf-8")
+        return texto_total
+    except Exception as e:
+        st.error(f"Error al leer el archivo: {e}")
+        return ""
+        
 # --- 1. CONFIGURACIÓN ---
 
 # Si tu logo es un archivo .png o .ico, puedes pasarlo directamente aquí
@@ -233,7 +250,21 @@ with st.sidebar:
     
     if st.button("➕ NUEVA SESIÓN", use_container_width=True):
         st.session_state.messages = []; st.session_state.chat_id = None; st.rerun()
+    # --- 8. SIDEBAR (CON CARGA DE DOCUMENTOS) ---
+with st.sidebar:
+    # ... (Tu logo y botones anteriores) ...
+
+    st.markdown("<h3>📂 Memoria Externa</h3>", unsafe_allow_html=True)
+    archivo = st.file_uploader("Sube apuntes (PDF/TXT)", type=["pdf", "txt"], label_visibility="collapsed")
     
+    if archivo:
+        with st.spinner("Analizando documento..."):
+            contenido = procesar_archivo(archivo)
+            if contenido:
+                st.session_state.contexto_documento = contenido
+                st.success(f"✅ {archivo.name} cargado")
+    else:
+        st.session_state.contexto_documento = "" # Limpiar si no hay archivo
     st.markdown("<br><h3>Historial de Enlaces</h3>", unsafe_allow_html=True)
     
     # Contenedor de chats
