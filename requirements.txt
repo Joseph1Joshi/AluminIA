@@ -2,3 +2,4 @@ streamlit
 groq
 wikipedia
 supabase
+pypdf
