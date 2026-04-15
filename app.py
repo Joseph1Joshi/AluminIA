@@ -324,75 +324,84 @@ for msg in st.session_state.messages:
             st.markdown(f'<div class="debug-response">{msg["content"]}</div>', unsafe_allow_html=True)
         else:
             st.markdown(msg["content"])
-# --- 10. MOTOR DE IA (VERSIÓN CON INYECCIÓN FORZADA) ---
+# --- 10. MOTOR DE IA (CONEXIÓN FORZADA DE ARCHIVOS) ---
 
-# 1. Interfaz de Carga (Cerrojo de seguridad)
 with st.container():
     col_btn, _ = st.columns([0.2, 0.8])
     with col_btn:
-        with st.popover("＋ Subir"):
-            archivo_adjunto = st.file_uploader("Documento", type=["pdf", "txt"], key="chat_uploader_final_v6")
+        with st.popover("＋ Subir", help="Vincular PDF o TXT"):
+            # Usamos una key única para este widget específico
+            archivo_adjunto = st.file_uploader(
+                "Documento", 
+                type=["pdf", "txt"], 
+                key="uploader_interno_chat",
+                label_visibility="collapsed"
+            )
+            
             if archivo_adjunto:
-                file_key = f"leido_{archivo_adjunto.name}"
-                if not st.session_state.get(file_key, False):
+                # Generamos un ID basado en el nombre para evitar procesar lo mismo 100 veces
+                id_archivo = f"proc_{archivo_adjunto.name}"
+                
+                if st.session_state.get("last_proc_file") != id_archivo:
                     with st.spinner("Leyendo..."):
                         texto = procesar_archivo(archivo_adjunto)
                         if texto:
+                            # ESCENCIAL: Guardamos en la variable global que la IA lee
                             st.session_state.contexto_documento = texto
-                            st.session_state[file_key] = True 
+                            st.session_state.last_proc_file = id_archivo
+                            
+                            # Notificamos al sistema
                             st.session_state.messages.append({
                                 "role": "assistant", 
-                                "content": f"✅ Memoria cargada: **{archivo_adjunto.name}**. Ya puedes preguntarme sobre esto."
+                                "content": f"📥 He recibido **{archivo_adjunto.name}**. ¿En qué te ayudo con este material?"
                             })
+                            st.toast("Documento vinculado", icon="✅")
                             st.rerun()
 
-# 2. Monitor de Contexto (DEBUG - Solo tú lo ves)
-if st.session_state.get("contexto_documento"):
-    with st.expander("🔍 Estado de la Memoria Activa"):
-        st.write(f"Caracteres detectados: {len(st.session_state.contexto_documento)}")
-        st.text(st.session_state.contexto_documento[:500] + "...")
-
-# 3. Input de Chat
-prompt = st.chat_input("Plantea tu duda...")
+# 2. Input de Chat
+prompt = st.chat_input("Escribe tu duda aquí...")
 
 if prompt:
+    # Evitar doble envío
+    if st.session_state.get("last_prompt") == prompt:
+        st.stop()
+    st.session_state.last_prompt = prompt
+
+    # Inicializar chat si es nuevo
     if st.session_state.chat_id is None:
         st.session_state.chat_id = crear_chat_en_db(prompt[:30], st.session_state.user.id)
     
     st.session_state.messages.append({"role": "user", "content": prompt})
     guardar_mensaje_en_db(st.session_state.chat_id, "user", prompt)
 
-    # --- PARCHE DE COMUNICACIÓN CON GROQ ---
+    # --- INYECCIÓN DE CONTEXTO ---
     MODELO = "llama-3.3-70b-versatile"
     raw_instructions = cargar_prompt("instrucciones.txt")
     
-    # Extraemos el contexto y lo preparamos
-    texto_contexto = st.session_state.get("contexto_documento", "").strip()
+    # Recuperamos el texto (venga del botón de afuera o del de adentro)
+    texto_activo = st.session_state.get("contexto_documento", "").strip()
     
-    # Construimos el System Prompt INTEGRANDO el archivo directamente
-    if texto_contexto:
+    if texto_activo:
+        # Formateo agresivo para que la IA no lo ignore
         SYSTEM_PROMPT = f"""{raw_instructions}
-
-        IMPORTANTE: El usuario ha subido un documento. Tu conocimiento para esta charla debe basarse en el siguiente texto:
-        ### INICIO DEL ARCHIVO ###
-        {texto_contexto[:15000]}
-        ### FIN DEL ARCHIVO ###
         
-        Si el usuario pregunta algo sobre el documento, usa la información anterior."""
+        [CONTEXTO PRIORITARIO DEL ARCHIVO CARGADO]:
+        {texto_activo[:15000]}
+        
+        Instrucción: Si el usuario pregunta sobre el material anterior, responde con precisión académica."""
     else:
         SYSTEM_PROMPT = raw_instructions
 
-    # Generación con Streaming
+    # Generación de Respuesta
     with st.chat_message("assistant", avatar=LOGO_IMG):
         full_res = ""
         holder = st.empty()
         try:
             client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-            # Enviamos el SYSTEM_PROMPT como primer mensaje siempre
             stream = client.chat.completions.create(
                 model=MODELO,
                 messages=[{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages[-10:],
-                temperature=0.3, # Más bajo = menos inventiva, más caso al archivo
+                temperature=0.4,
                 stream=True
             )
             for chunk in stream:
@@ -401,8 +410,8 @@ if prompt:
                 holder.markdown(full_res + "▌")
             holder.markdown(full_res)
         except Exception as e:
-            st.error(f"Error: {e}")
-            full_res = "Se perdió la conexión con el servidor de Groq."
+            st.error(f"Error de red: {e}")
+            full_res = "Hubo un problema al conectar con el cerebro de la IA."
 
     st.session_state.messages.append({"role": "assistant", "content": full_res})
     guardar_mensaje_en_db(st.session_state.chat_id, "assistant", full_res)
