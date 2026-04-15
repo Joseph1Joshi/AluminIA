@@ -324,66 +324,69 @@ for msg in st.session_state.messages:
             st.markdown(f'<div class="debug-response">{msg["content"]}</div>', unsafe_allow_html=True)
         else:
             st.markdown(msg["content"])
-# --- 10. MOTOR DE IA (VERSIÓN CON CERROJO DE SEGURIDAD) ---
+# --- 10. MOTOR DE IA (VERSIÓN CON BLOQUEO DE DOBLE SENTIDO) ---
 
-# 1. Zona de Acción (Interfaz de carga)
+# 1. Interfaz de Carga (Simplificada para evitar triggers falsos)
 with st.container():
     col_btn, _ = st.columns([0.2, 0.8])
     with col_btn:
-        with st.popover("＋ Subir", help="Añadir apuntes PDF o TXT"):
-            st.markdown("<p style='color:#10b981; font-weight:bold;'>Memoria Externa</p>", unsafe_allow_html=True)
+        with st.popover("＋ Subir"):
             archivo_adjunto = st.file_uploader(
                 "Documento", 
                 type=["pdf", "txt"], 
-                key="chat_uploader_vfinal",
-                label_visibility="collapsed"
+                key="chat_uploader_definitivo"
             )
             
-            # CERROJO: Solo procesamos si hay archivo Y no es el mismo que acabamos de leer
+            # Solo procesamos si el archivo existe y NO ha sido marcado como "leído"
             if archivo_adjunto:
-                nombre_id = f"{archivo_adjunto.name}_{archivo_adjunto.size}"
-                if st.session_state.get("last_file_id") != nombre_id:
-                    with st.spinner("Vinculando..."):
+                file_key = f"leido_{archivo_adjunto.name}"
+                if not st.session_state.get(file_key, False):
+                    with st.spinner("Sincronizando..."):
                         texto = procesar_archivo(archivo_adjunto)
                         if texto:
+                            # 1. Guardamos el contenido
                             st.session_state.contexto_documento = texto
-                            st.session_state.last_file_id = nombre_id # Cerramos el candado
-                            
-                            # Mensaje único de confirmación
-                            confirmacion = {
+                            # 2. Marcamos este archivo específico como ya procesado
+                            st.session_state[file_key] = True 
+                            # 3. Añadimos mensaje de sistema al historial
+                            msg_sistema = {
                                 "role": "assistant", 
-                                "content": f"He procesado **{archivo_adjunto.name}**. Ya puedes hacerme preguntas sobre este material."
+                                "content": f"📝 He memorizado **{archivo_adjunto.name}**. ¿Qué quieres analizar?"
                             }
-                            st.session_state.messages.append(confirmacion)
-                            st.toast("Documento listo", icon="✅")
+                            st.session_state.messages.append(msg_sistema)
+                            # 4. Forzamos el guardado y reinicio único
                             st.rerun()
 
-# 2. Input del Chat (Anclado al fondo)
-prompt = st.chat_input("Plantea tu duda o analiza tus apuntes...")
+# 2. Input de Chat (Anclado al fondo)
+prompt = st.chat_input("Plantea tu duda...")
 
-# 3. Lógica de Procesamiento (Silenciosa para evitar ecos)
+# 3. Lógica de IA (Solo se ejecuta si el usuario escribe algo)
 if prompt:
-    # Registramos sin imprimir (La Sección 9 lo hará tras el rerun)
+    # Evitar que el prompt se procese dos veces si el usuario hace doble clic
+    if "last_prompt" in st.session_state and st.session_state.last_prompt == prompt:
+        st.stop()
+    
+    st.session_state.last_prompt = prompt
+
     if st.session_state.chat_id is None:
         st.session_state.chat_id = crear_chat_en_db(prompt[:30], st.session_state.user.id)
     
     st.session_state.messages.append({"role": "user", "content": prompt})
     guardar_mensaje_en_db(st.session_state.chat_id, "user", prompt)
 
-    # Contexto e Instrucciones
+    # Preparación de Contexto RAG
     MODELO = "llama-3.3-70b-versatile"
     raw_instructions = cargar_prompt("instrucciones.txt")
-    contexto_inyectado = ""
+    contexto = ""
     if st.session_state.get("contexto_documento"):
-        contexto_inyectado = f"\n\n[CONTEXTO DE ARCHIVO CARGADO]:\n{st.session_state.contexto_documento[:15000]}\n---"
+        contexto = f"\n\n[CONTEXTO]:\n{st.session_state.contexto_documento[:15000]}\n---"
+    
+    SYSTEM_PROMPT = raw_instructions.replace("{MODELO}", MODELO).replace("{TEMP}", "0.6") + contexto
 
-    SYSTEM_PROMPT = raw_instructions.replace("{MODELO}", MODELO).replace("{TEMP}", "0.6") + contexto_inyectado
-
-    # Generación Visual (Streaming)
+    # Respuesta Visual (Streaming)
     with st.chat_message("assistant", avatar=LOGO_IMG):
         full_res = ""
         holder = st.empty()
-        
         try:
             client = Groq(api_key=st.secrets["GROQ_API_KEY"])
             stream = client.chat.completions.create(
@@ -392,22 +395,16 @@ if prompt:
                 temperature=0.6,
                 stream=True
             )
-            
             for chunk in stream:
                 content = chunk.choices[0].delta.content or ""
                 full_res += content
                 holder.markdown(full_res + "▌")
-            
             holder.markdown(full_res)
-            
         except Exception as e:
-            st.error(f"Error: {e}")
-            full_res = "Hubo un fallo en la conexión."
-            holder.markdown(full_res)
-    
-    # Registro final y limpieza de input vía rerun
+            st.error(f"Error de conexión: {e}")
+            full_res = "Hubo un hipo en la red."
+
+    # Guardado y Rerun final
     st.session_state.messages.append({"role": "assistant", "content": full_res})
     guardar_mensaje_en_db(st.session_state.chat_id, "assistant", full_res)
-    st.rerun()
-    # Este rerun hace que la SECCIÓN 9 pinte la realidad sin duplicados
     st.rerun()
